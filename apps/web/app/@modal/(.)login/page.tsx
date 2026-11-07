@@ -1,4 +1,5 @@
 import { LoginForm } from "~/app/(auth)/_components/login-form";
+import { configuredOAuthProviders } from "~/lib/auth-providers";
 import { noindexMetadata } from "~/lib/metadata";
 
 import { AuthModal } from "../auth-modal";
@@ -15,7 +16,7 @@ export default function LoginModal() {
       title="Welcome back"
       description="Log in to sync your library across devices."
     >
-      <LoginForm />
+      <LoginForm providers={configuredOAuthProviders()} />
     </AuthModal>
   );
 }

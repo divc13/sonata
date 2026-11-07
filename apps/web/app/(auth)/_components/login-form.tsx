@@ -12,6 +12,7 @@ import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import type z from "zod";
 
+import type { OAuthProvider } from "~/lib/auth-providers";
 import { asRoute, cn, safeRedirectPath } from "~/lib/utils";
 
 import { EmailField } from "./email-field";
@@ -102,7 +103,12 @@ async function signInWithPasskey({
   }
 }
 
-export function LoginForm() {
+type LoginFormProps = {
+  /** The providers the server registered; empty hides the OAuth buttons. */
+  providers?: OAuthProvider[];
+};
+
+export function LoginForm({ providers = [] }: LoginFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isPasskeyLoading, setIsPasskeyLoading] = React.useState(false);
@@ -219,6 +225,7 @@ export function LoginForm() {
         </Button>
 
         <OAuthButtons
+          providers={providers}
           isFormDisabled={isDisabled}
           callbackUrl={callbackUrl}
           setIsSubmitting={setIsSubmitting}

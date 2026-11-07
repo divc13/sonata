@@ -1,4 +1,5 @@
 import { SignUpForm } from "~/app/(auth)/_components/signup-form";
+import { configuredOAuthProviders } from "~/lib/auth-providers";
 import { noindexMetadata } from "~/lib/metadata";
 
 import { AuthModal } from "../auth-modal";
@@ -15,7 +16,7 @@ export default function SignUpModal() {
       title="Create your account"
       description="Free forever. No credit card needed."
     >
-      <SignUpForm />
+      <SignUpForm providers={configuredOAuthProviders()} />
     </AuthModal>
   );
 }

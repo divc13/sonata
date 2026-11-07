@@ -1,7 +1,14 @@
+"use client";
+
 import { Plus } from "lucide-react";
 
 import { NewPlaylistForm } from "./new-playlist-form";
 
+/**
+ * The grid's "New playlist" tile. It lives in a client module on purpose:
+ * `NewPlaylistForm` reads its child's props, and a child created by a server
+ * component arrives as a lazy client reference with no props to read.
+ */
 export function NewPlaylistCard() {
   return (
     <div className="w-full">

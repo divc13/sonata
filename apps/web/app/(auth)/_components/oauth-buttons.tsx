@@ -7,15 +7,19 @@ import React from "react";
 import { toast } from "sonner";
 
 import { GitHub, Google } from "~/components/icons";
+import type { OAuthProvider } from "~/lib/auth-providers";
 
 import { authSquareButtonStyles } from "./field-styles";
-
-type OAuthProvider = "google" | "github";
 
 type OAuthButtonProps = {
   isFormDisabled: boolean;
   /** Already passed through `safeRedirectPath`. */
   callbackUrl: string;
+  /**
+   * The providers `createAuth` registered. A provider without credentials is
+   * not offered: Better Auth would answer "Provider not found".
+   */
+  providers?: OAuthProvider[];
   setIsSubmitting: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
@@ -48,10 +52,22 @@ async function signInWithProvider(
   }
 }
 
+/** Visual order, so the pair keeps its place when only one is configured. */
+const PROVIDERS: { id: OAuthProvider; label: string; Icon: typeof Google }[] = [
+  { id: "github", label: "GitHub", Icon: GitHub },
+  { id: "google", label: "Google", Icon: Google },
+];
+
 export function OAuthButtons(props: OAuthButtonProps) {
-  const { isFormDisabled, callbackUrl, setIsSubmitting } = props;
+  const {
+    isFormDisabled,
+    callbackUrl,
+    providers = [],
+    setIsSubmitting,
+  } = props;
 
   const [oauthLoading, setOauthLoading] = React.useState<OAuthProvider>();
+  const shown = PROVIDERS.filter(({ id }) => providers.includes(id));
 
   async function startProviderSignIn(provider: OAuthProvider) {
     await signInWithProvider(
@@ -62,38 +78,30 @@ export function OAuthButtons(props: OAuthButtonProps) {
     );
   }
 
+  if (shown.length === 0) return null;
+
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-2">
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => startProviderSignIn("github")}
-          disabled={isFormDisabled}
-          className={authSquareButtonStyles}
-        >
-          {oauthLoading === "github" ? (
-            <Loader2 className="mr-2 size-4 animate-spin" />
-          ) : (
-            <GitHub className="mr-2 size-4" />
-          )}
-          GitHub
-        </Button>
-
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => startProviderSignIn("google")}
-          disabled={isFormDisabled}
-          className={authSquareButtonStyles}
-        >
-          {oauthLoading === "google" ? (
-            <Loader2 className="mr-2 size-4 animate-spin" />
-          ) : (
-            <Google className="mr-2 size-4" />
-          )}
-          Google
-        </Button>
+      <div
+        className={shown.length > 1 ? "grid grid-cols-2 gap-2" : "grid gap-2"}
+      >
+        {shown.map(({ id, label, Icon }) => (
+          <Button
+            key={id}
+            type="button"
+            variant="secondary"
+            onClick={() => startProviderSignIn(id)}
+            disabled={isFormDisabled}
+            className={authSquareButtonStyles}
+          >
+            {oauthLoading === id ? (
+              <Loader2 className="mr-2 size-4 animate-spin" />
+            ) : (
+              <Icon className="mr-2 size-4" />
+            )}
+            {label}
+          </Button>
+        ))}
       </div>
 
       <div className="flex items-center gap-3 text-xs text-muted-foreground before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">

@@ -29,6 +29,10 @@ function chain<E>(theirs: ((event: E) => void) | undefined, ours: () => void) {
  * UI Dialog and Drawer) is a separate chunk: the first hover, focus or pointer
  * down loads it and swaps this identical closed trigger for the real one. A
  * click before that opens the dialog once it lands.
+ *
+ * The trigger must come from a client component (`NewPlaylistButton`,
+ * `NewPlaylistCard`): a server component hands its child over as a lazy client
+ * reference, which has no props to clone and crashes the render.
  */
 export function NewPlaylistForm({ children }: NewPlaylistFormProps) {
   const name = `new-playlist-${React.useId()}`;
