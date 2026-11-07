@@ -59,6 +59,40 @@ describe.skipIf(!runDb)("sonata router (seeded local database)", () => {
     }
   });
 
+  it("returns ownership and listing history oldest first", async () => {
+    const master = await c().sonata.songs.byId({ tokenId: "midnight-drive" });
+
+    expect(master.ownershipHistory.length).toBeGreaterThan(0);
+    expect(master.ownershipHistory[0]).toMatchObject({
+      tokenId: "midnight-drive",
+      ownerAccountId: "nadia-sonata.testnet",
+      eventType: "mint",
+      priceUsdc: null,
+    });
+    for (const row of master.ownershipHistory) {
+      expect(row.tokenId).toBe("midnight-drive");
+    }
+    const ownershipTimes = master.ownershipHistory.map((row) =>
+      row.acquiredAt.getTime(),
+    );
+    expect(ownershipTimes).toEqual([...ownershipTimes].sort((a, b) => a - b));
+
+    expect(master.listingHistory.length).toBeGreaterThan(0);
+    expect(master.listingHistory[0]).toMatchObject({
+      tokenId: "midnight-drive",
+      sellerAccountId: "nadia-sonata.testnet",
+      priceUsdc: "50000000",
+      active: true,
+    });
+    for (const row of master.listingHistory) {
+      expect(row.tokenId).toBe("midnight-drive");
+    }
+    const listingTimes = master.listingHistory.map((row) =>
+      row.createdAt.getTime(),
+    );
+    expect(listingTimes).toEqual([...listingTimes].sort((a, b) => a - b));
+  });
+
   it("rejects unknown masters with NOT_FOUND and empty ids with BAD_REQUEST", async () => {
     await expect(
       c().sonata.songs.byId({ tokenId: "not-a-token" }),

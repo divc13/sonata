@@ -43,9 +43,37 @@ export type SonataPayoutRow = {
   createdAt: Date;
 };
 
+/** One row of a master's ownership timeline (`mint`, `transfer` or `sale`). */
+export type SonataOwnershipRow = {
+  id: number;
+  tokenId: string;
+  ownerAccountId: string;
+  acquiredAt: Date;
+  priceUsdc: string | null;
+  txHash: string | null;
+  eventType: "mint" | "transfer" | "sale";
+};
+
+/** One resale listing for a master, active or closed. */
+export type SonataListingRow = {
+  id: number;
+  tokenId: string;
+  sellerAccountId: string;
+  priceUsdc: string;
+  active: boolean;
+  txHash: string | null;
+  createdAt: Date;
+  cancelledAt: Date | null;
+  soldAt: Date | null;
+};
+
 /** Full master detail for the `/master/[tokenId]` page. */
 export type SonataMasterDetail = SonataSongWithEarnings & {
   recentPayouts: SonataPayoutRow[];
+  /** Ownership events, oldest first. */
+  ownershipHistory: SonataOwnershipRow[];
+  /** Listing events, oldest first. */
+  listingHistory: SonataListingRow[];
 };
 
 /** An artist's public profile plus all of their masters. */
