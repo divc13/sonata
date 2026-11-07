@@ -81,7 +81,7 @@ import sys
 
 text = open(sys.argv[1], errors="replace").read()
 text = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", text)
-match = re.search(r"Transaction Id:\s*([1-9A-HJ-NP-Za-km-z]{32,})", text)
+match = re.search(r"Transaction [Ii][Dd]:\s*([1-9A-HJ-NP-Za-km-z]{32,})", text)
 print(match.group(1) if match else "")
 PY
 }
