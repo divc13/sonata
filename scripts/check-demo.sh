@@ -7,7 +7,11 @@
 # No jq/npm dependency.
 #
 # Exit code: 0 when the chain demo is complete (12 masters, 5 active
-# listings, an active listener pass and keyless song accounts), 1 otherwise.
+# listings, an active listener pass, and the 12 mapped replacement song
+# wallets deployed from the fixed global song-wallet code and keyless), 1
+# otherwise. The original `<token>.masters` accounts remain in NFT metadata;
+# the platform payout mapping and scripts/demo-wallets.json name the live
+# replacement accounts.
 # The platform/market sections are SKIP when those contracts are not
 # deployed, but the missing demo state is still a FAIL.
 #
@@ -27,6 +31,7 @@ NETWORK="${NEAR_NETWORK:-testnet}"
 RPC_URL="${SONATA_RPC_URL:-${NEAR_RPC_URL:-https://rpc.testnet.fastnear.com}}"
 WASM_DIR="$ROOT/contracts/target/wasm32-unknown-unknown/release"
 CATALOGUE="$ROOT/scripts/demo-catalogue.json"
+WALLETS="$ROOT/scripts/demo-wallets.json"
 
 PASS=0
 FAIL=0
@@ -143,6 +148,30 @@ for song in json.load(open(sys.argv[1]))["songs"]:
 PY
 }
 
+# Replacement wallets: token id, wallet account, expected song-wallet hash.
+# scripts/rescue-song-wallets.sh owns this file; the platform payout mapping is
+# the chain-side source of truth and is checked against it below.
+catalogue_wallets_tsv() {
+  python3 - "$WALLETS" "$MASTERS_ACCOUNT" <<'PY'
+import json
+import sys
+
+mapping = json.load(open(sys.argv[1]))
+if mapping.get("collection") != sys.argv[2]:
+    print(
+        f"mapping collection {mapping.get('collection')} != {sys.argv[2]}",
+        file=sys.stderr,
+    )
+    sys.exit(3)
+for entry in mapping["wallets"]:
+    print("\t".join([
+        entry["tokenId"],
+        entry["wallet"],
+        mapping["songWalletCodeHash"],
+    ]))
+PY
+}
+
 # Compares the 12 expected masters with nft_tokens output. Emits PASS/FAIL/INFO
 # lines for the shell to count.
 check_masters_tsv() {
@@ -154,6 +183,10 @@ catalogue = json.load(open(sys.argv[1]))
 collection = sys.argv[2]
 expected = {song["tokenId"]: song for song in catalogue["songs"]}
 actual = json.loads(sys.argv[3])
+
+# Tokens the demo E2E has resold to the collector. Kept next to the checks so
+# a pre-sale chain (no resale yet) can be compared by editing this one map.
+RESOLD = {"after-rain": "collector.sonata.testnet"}
 
 if not isinstance(actual, list):
     print("FAIL\tnft_tokens did not return an array")
@@ -177,10 +210,13 @@ for token_id, song in expected.items():
     sub_account = token.get("sub_account")
     metadata = token.get("metadata") or {}
     expected_sub = f"{token_id}.{collection}"
+    # after-rain was resold to the demo collector by the chain-rescue E2E; the
+    # check runs against the post-demo state. The creator is unchanged.
+    expected_owner = RESOLD.get(token_id, song["artistAccountId"])
 
     problems = []
-    if owner != song["artistAccountId"]:
-        problems.append(f"owner {owner} != {song['artistAccountId']}")
+    if owner != expected_owner:
+        problems.append(f"owner {owner} != {expected_owner}")
     if creator != song["artistAccountId"]:
         problems.append(f"creator {creator} != {song['artistAccountId']}")
     if sub_account != expected_sub:
@@ -213,6 +249,9 @@ songs = {song["tokenId"]: song for song in catalogue["songs"]}
 expected = {listing["tokenId"]: listing for listing in catalogue["listings"]}
 actual = json.loads(sys.argv[2])
 
+# The E2E resold and relisted after-rain as the collector (same $20 ask).
+RESOLD = {"after-rain": "collector.sonata.testnet"}
+
 if not isinstance(actual, list):
     print("FAIL\tget_listings did not return an array")
     sys.exit(0)
@@ -236,7 +275,7 @@ for token_id, listing in expected.items():
 
     seller = entry.get("seller")
     price = entry.get("price")
-    expected_seller = songs[token_id]["artistAccountId"]
+    expected_seller = RESOLD.get(token_id, songs[token_id]["artistAccountId"])
     problems = []
     if seller != expected_seller:
         problems.append(f"seller {seller} != {expected_seller}")
@@ -322,7 +361,9 @@ if account_has_code "$USDC_ACCOUNT"; then
   info "total supply: $(fmt_usdc "$total") USDC ($total micro-USDC)"
   # The pass costs 5.00 USDC, so 15.00 is the post-purchase floor.
   check_balance "$LISTENER_ACCOUNT" 15000000
-  check_balance "$COLLECTOR_ACCOUNT" 200000000
+  # The E2E buys after-rain for $20 (then withdraws its $0.06 wallet balance),
+  # so 180.06 is the post-demo floor.
+  check_balance "$COLLECTOR_ACCOUNT" 180000000
   check_balance "$PLATFORM_ACCOUNT" 1000000000
 else
   fail "no contract code at $USDC_ACCOUNT"
@@ -390,43 +431,59 @@ else
 fi
 
 # -------------------------------------------------------- Song accounts ----
-section "Song accounts"
+# The original `<token>.masters` accounts still exist with the old immutable
+# code; `scripts/rescue-song-wallets.sh` created `<token>-v2.masters` and the
+# platform now pays those. Verify the platform mapping and the replacement
+# wallets (global code + keyless) instead of the superseded accounts.
+section "Song accounts  $MASTERS_ACCOUNT (replacement wallets)"
 if [ -n "${config_hash:-}" ]; then
-  while IFS=$'\t' read -r token artist title media; do
+  while IFS=$'\t' read -r token wallet mapping_hash; do
     [ -n "$token" ] || continue
-    sub="$token.$MASTERS_ACCOUNT"
+
+    mapped=$(call_view "$PLATFORM_ACCOUNT" get_song_account \
+      "{\"token_id\":\"$token\"}" | tr -d '"')
 
     status=0
-    state=$(account_code_state "$sub") || status=$?
+    state=$(account_code_state "$wallet") || status=$?
     if [ "$status" -eq 3 ]; then
-      fail "$sub does not exist"
+      fail "$wallet does not exist"
       continue
     elif [ "$status" -ne 0 ]; then
-      skip "$sub: RPC could not read the account"
+      skip "$wallet: RPC could not read the account"
       continue
     fi
 
     IFS=$'\t' read -r code_hash global_hash <<<"$state"
-    if [ -n "$global_hash" ] && [ "$global_hash" = "$config_hash" ]; then
-      pass "$sub uses the global song-wallet code"
+    wallet_config=$(call_view "$wallet" get_config 2>/dev/null || true)
+    wallet_token=$(printf '%s' "$wallet_config" | json_field token_id 2>/dev/null || true)
+    wallet_collection=$(printf '%s' "$wallet_config" | json_field collection_id 2>/dev/null || true)
+    wallet_payment=$(printf '%s' "$wallet_config" | json_field payment_token 2>/dev/null || true)
+
+    if [ "$mapping_hash" != "$config_hash" ]; then
+      fail "$wallet: mapping file hash $mapping_hash != collection $config_hash"
+    elif [ "$mapped" != "$wallet" ]; then
+      fail "$wallet: platform maps $token to ${mapped:-nothing}"
+    elif [ "$wallet_token" != "$token" ] || [ "$wallet_collection" != "$MASTERS_ACCOUNT" ] ||
+      [ "$wallet_payment" != "$USDC_ACCOUNT" ]; then
+      fail "$wallet: config ${wallet_token:-?}/${wallet_collection:-?}/${wallet_payment:-?}"
+    elif [ -n "$global_hash" ] && [ "$global_hash" = "$config_hash" ]; then
+      pass "$wallet is mapped, initialized and uses the global song-wallet code"
     elif [ "$code_hash" = "$config_hash" ]; then
-      pass "$sub code hash matches song-wallet"
-    elif [ "$code_hash" = "11111111111111111111111111111111" ]; then
-      fail "$sub has no code"
+      pass "$wallet is mapped, initialized and its code hash matches the song-wallet"
     else
-      fail "$sub code hash ${global_hash:-$code_hash} != collection $config_hash"
+      fail "$wallet code hash ${global_hash:-$code_hash} != collection $config_hash"
     fi
 
     status=0
-    keys=$(access_key_count "$sub") || status=$?
+    keys=$(access_key_count "$wallet") || status=$?
     if [ "$status" -eq 3 ]; then
-      skip "$sub: access-key view not allowed by this RPC"
+      skip "$wallet: access-key view not allowed by this RPC"
     elif [ "$status" -ne 0 ]; then
-      skip "$sub: access-key view failed"
+      skip "$wallet: access-key view failed"
     else
-      assert_eq "$sub access keys" "$keys" "0"
+      assert_eq "$wallet access keys" "$keys" "0"
     fi
-  done < <(catalogue_songs_tsv)
+  done < <(catalogue_wallets_tsv)
 else
   skip "collection config unavailable; cannot verify song accounts"
 fi
