@@ -1,14 +1,17 @@
 "use client";
 
 import type { Favorite, MyPlaylist } from "@infinitunes/db/schema";
+import Link from "next/link";
 import * as React from "react";
 import { useAudioPlayerContext } from "react-use-audio-player";
 import { toast } from "sonner";
 
 import { GlassSurface } from "~/components/glass/glass-surface";
 import { useKeydown } from "~/hooks/use-keydown";
+import { useListenHeartbeat } from "~/hooks/use-listen-heartbeat";
 import { usePlayhead } from "~/hooks/use-playhead";
 import { useRadioRefill } from "~/hooks/use-radio-refill";
+import { useSonataEntitlement } from "~/hooks/use-sonata-entitlement";
 import {
   useActiveRadioSession,
   useCurrentSongIndex,
@@ -23,6 +26,11 @@ import type { User } from "~/lib/auth";
 import { recordPlay } from "~/lib/history-actions";
 import { shouldIgnoreShortcut } from "~/lib/keyboard";
 import { createPositionStore } from "~/lib/position-store";
+import {
+  clampPreviewSeek,
+  PREVIEW_SECONDS,
+  sonataTokenIdFromUrl,
+} from "~/lib/sonata-preview";
 import { trpc } from "~/lib/trpc/vanilla";
 import { cn } from "~/lib/utils";
 
@@ -159,6 +167,89 @@ export function Player({ user, playlists, favorites }: PlayerProps) {
   });
 
   const current = queue[currentIndex];
+  const queueItemId = current?.queueItemId;
+  const sonataTokenId = sonataTokenIdFromUrl(current?.url);
+
+  // Pass state is read only while a Sonata master is queued, so normal
+  // Infinitunes playback never asks the pass endpoint.
+  const { hasPass, isLoading: isPassLoading } = useSonataEntitlement({
+    enabled: sonataTokenId !== null,
+  });
+  const previewing = sonataTokenId !== null && !isPassLoading && !hasPass;
+
+  useListenHeartbeat({
+    tokenId: sonataTokenId,
+    enabled: sonataTokenId !== null && hasPass,
+    isPlaying,
+  });
+
+  // Preview state belongs to one queue entry: another track starts a new free
+  // window and neither the prompt nor the toast follows the listener.
+  const [previewEnded, setPreviewEnded] = React.useState(false);
+  const [previewItemId, setPreviewItemId] = React.useState(queueItemId);
+  const previewPausedRef = React.useRef<string | null>(null);
+  const previewToastedRef = React.useRef<string | null>(null);
+
+  if (previewItemId !== queueItemId) {
+    setPreviewItemId(queueItemId);
+    setPreviewEnded(false);
+  }
+
+  // A pass that arrives unblocks the track; one that expires re-arms the
+  // preview without keeping a stale "ended" prompt on screen.
+  const [previewHadPass, setPreviewHadPass] = React.useState(hasPass);
+  if (previewHadPass !== hasPass) {
+    setPreviewHadPass(hasPass);
+    if (hasPass) setPreviewEnded(false);
+  }
+
+  // Refs cannot be written during render, so they are re-armed after the entry
+  // (or pass) change commits, before the preview interval below starts.
+  React.useEffect(() => {
+    if (!queueItemId) return;
+    previewPausedRef.current = null;
+    previewToastedRef.current = null;
+  }, [queueItemId]);
+
+  React.useEffect(() => {
+    if (!hasPass) return;
+    previewPausedRef.current = null;
+  }, [hasPass]);
+
+  const endPreview = React.useCallback(
+    (itemId: string) => {
+      if (!isPlaying || previewPausedRef.current === itemId) return;
+      previewPausedRef.current = itemId;
+      seek(PREVIEW_SECONDS);
+      position.set(PREVIEW_SECONDS);
+      setPreviewEnded(true);
+      togglePlayPause();
+      if (previewToastedRef.current !== itemId) {
+        previewToastedRef.current = itemId;
+        toast("Preview ended", {
+          description: "Get the Sonata pass to hear the full track.",
+        });
+      }
+    },
+    [isPlaying, position, seek, togglePlayPause],
+  );
+
+  // Watching the audio position (not the position store) keeps the pause exact
+  // even while the seek bar is dragged.
+  React.useEffect(() => {
+    if (!previewing || !isPlaying || previewEnded || !queueItemId) return;
+    const id = window.setInterval(() => {
+      if (getPosition() >= PREVIEW_SECONDS) endPreview(queueItemId);
+    }, 250);
+    return () => window.clearInterval(id);
+  }, [
+    endPreview,
+    getPosition,
+    isPlaying,
+    previewEnded,
+    previewing,
+    queueItemId,
+  ]);
 
   usePlayhead({
     store: position,
@@ -240,6 +331,13 @@ export function Player({ user, playlists, favorites }: PlayerProps) {
 
   function playPauseHandler() {
     if (isPlayerInit) {
+      if (previewEnded && !isPlaying) {
+        // Pressing play after the preview ended starts a fresh free window.
+        previewPausedRef.current = null;
+        setPreviewEnded(false);
+        position.set(0);
+        if (isReady) seek(0);
+      }
       togglePlayPause();
     } else {
       setIsPlayerInit(true);
@@ -247,13 +345,20 @@ export function Player({ user, playlists, favorites }: PlayerProps) {
   }
 
   function seekChange(value: number) {
-    position.set(value);
+    position.set(previewing ? clampPreviewSeek(value) : value);
   }
 
   function seekCommit() {
-    seek(position.get());
+    const target = previewing
+      ? clampPreviewSeek(position.get())
+      : position.get();
+    seek(target);
     position.set(getPosition());
     setIsDragging(false);
+    if (previewing && target < PREVIEW_SECONDS) {
+      previewPausedRef.current = null;
+      setPreviewEnded(false);
+    }
   }
 
   // Rapid shortcut presses land before the context re-renders with the volume
@@ -338,6 +443,22 @@ export function Player({ user, playlists, favorites }: PlayerProps) {
         <output aria-live="polite" className="sr-only">
           {current ? `Now playing ${current.name}, ${current.subtitle}` : ""}
         </output>
+        {previewEnded && (
+          <div className="pointer-events-none absolute inset-x-3 bottom-full mb-2 flex justify-center">
+            <p
+              data-sonata-preview
+              className="pointer-events-auto flex items-center gap-2 rounded-full border border-border/60 bg-background/90 px-3 py-1.5 text-xs/4 text-muted-foreground shadow-md backdrop-blur-md"
+            >
+              <span>30-second preview ended</span>
+              <Link
+                href="/pass"
+                className="font-semibold text-primary hover:underline"
+              >
+                Get the pass
+              </Link>
+            </p>
+          </div>
+        )}
         <div
           className={cn(
             "grid h-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-2 md:grid-cols-[minmax(9rem,1fr)_minmax(15rem,36rem)_minmax(9rem,1fr)] md:gap-4 md:px-3",
