@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import { localDevLoginMessage } from "~/lib/local-dev-login";
+import { localDevLogin, localDevLoginMessage } from "~/lib/local-dev-login";
 
 const user = { email: "local@example.test", password: "LocalDev123!" };
 const local = "postgresql://u:p@127.0.0.1:5432/db";
@@ -13,6 +13,29 @@ function run(env: { DATABASE_URL?: string; NODE_ENV?: string }) {
   });
   return { message, read };
 }
+
+describe("localDevLogin", () => {
+  it("returns the fixture's credentials for a loopback database", () => {
+    expect(localDevLogin({ DATABASE_URL: local }, () => user)).toEqual(user);
+  });
+
+  it("reads nothing, and returns null, for a remote database or production", () => {
+    for (const env of [
+      { DATABASE_URL: "postgresql://u:p@db.example.com:5432/db" },
+      { DATABASE_URL: local, NODE_ENV: "production" },
+      { DATABASE_URL: undefined },
+    ]) {
+      let read = false;
+      expect(
+        localDevLogin(env, () => {
+          read = true;
+          return user;
+        }),
+      ).toBeNull();
+      expect(read).toBe(false);
+    }
+  });
+});
 
 describe("localDevLoginMessage", () => {
   it("shows the email and password for a loopback database in development", () => {

@@ -11,6 +11,7 @@ import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import type z from "zod";
 
+import type { OAuthProvider } from "~/lib/auth-providers";
 import { userMessage } from "~/lib/user-message";
 import { asRoute, safeRedirectPath } from "~/lib/utils";
 
@@ -69,7 +70,12 @@ async function signUp(
   }
 }
 
-export function SignUpForm() {
+type SignUpFormProps = {
+  /** The providers the server registered; empty hides the OAuth buttons. */
+  providers?: OAuthProvider[];
+};
+
+export function SignUpForm({ providers = [] }: SignUpFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
@@ -164,6 +170,7 @@ export function SignUpForm() {
 
       <div className="order-1">
         <OAuthButtons
+          providers={providers}
           isFormDisabled={isSubmitting}
           callbackUrl={callbackUrl}
           setIsSubmitting={setIsSubmitting}

@@ -59,7 +59,10 @@ async function mount(search: string, form: React.ReactNode) {
 
 describe("OAuth buttons", () => {
   it("carry the safe callback path and do not announce a sign-in early", async () => {
-    const container = await mount("callbackUrl=%2Flibrary", <LoginForm />);
+    const container = await mount(
+      "callbackUrl=%2Flibrary",
+      <LoginForm providers={["github", "google"]} />,
+    );
     const github = [...container.querySelectorAll("button")].find((b) =>
       b.textContent?.includes("GitHub"),
     );
@@ -73,7 +76,7 @@ describe("OAuth buttons", () => {
     social.length = 0;
     const container = await mount(
       "callbackUrl=https%3A%2F%2Fevil.test",
-      <LoginForm />,
+      <LoginForm providers={["github", "google"]} />,
     );
     const google = [...container.querySelectorAll("button")].find((b) =>
       b.textContent?.includes("Google"),
@@ -81,6 +84,27 @@ describe("OAuth buttons", () => {
     await act(async () => google?.click());
 
     expect(social).toEqual([{ provider: "google", callbackURL: "/" }]);
+  });
+});
+
+describe("OAuth buttons without credentials", () => {
+  it("offers no provider button when none is configured", async () => {
+    const container = await mount("", <LoginForm />);
+    expect(container.textContent).not.toContain("GitHub");
+    expect(container.textContent).not.toContain("Google");
+  });
+
+  it("offers only the configured provider", async () => {
+    social.length = 0;
+    const container = await mount("", <LoginForm providers={["github"]} />);
+    expect(container.textContent).toContain("GitHub");
+    expect(container.textContent).not.toContain("Google");
+
+    const github = [...container.querySelectorAll("button")].find((b) =>
+      b.textContent?.includes("GitHub"),
+    );
+    await act(async () => github?.click());
+    expect(social).toEqual([{ provider: "github", callbackURL: "/" }]);
   });
 });
 

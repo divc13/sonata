@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { configuredOAuthProviders } from "~/lib/auth-providers";
 import { asRoute } from "~/lib/utils";
 
 import { AuthIntro } from "../_components/auth-intro";
@@ -15,6 +16,9 @@ export const metadata = {
 };
 
 export default function SignUpPage() {
+  // Only the providers with credentials (see `LoginPage`).
+  const providers = configuredOAuthProviders();
+
   return (
     <div className="grid gap-4">
       <Suspense fallback={null}>
@@ -26,8 +30,10 @@ export default function SignUpPage() {
         description="Free forever. No credit card needed."
       />
 
-      <Suspense fallback={<AuthFormSkeleton fields={3} />}>
-        <SignUpForm />
+      <Suspense
+        fallback={<AuthFormSkeleton fields={3} social={providers.length > 0} />}
+      >
+        <SignUpForm providers={providers} />
       </Suspense>
 
       <div className="grid gap-4 text-center text-xs text-muted-foreground">
