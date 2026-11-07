@@ -22,6 +22,7 @@ import {
   APPROVAL_STORAGE_YOCTO,
   CONTRACT_IDS,
   DEMO_ACCOUNT_IDS,
+  FT_TRANSFER_CALL_GAS,
   LISTING_STORAGE_YOCTO,
   ONE_YOCTO,
   PASS_PRICE_USDC_MICRO,
@@ -146,6 +147,7 @@ export function buildPassCall(): PreparedCall {
       PASS_PURCHASE_MSG,
     ),
     deposit: ONE_YOCTO,
+    gas: FT_TRANSFER_CALL_GAS,
   };
 }
 
@@ -160,6 +162,7 @@ export function buildBuyCall(tokenId: string, priceUsdc: string): PreparedCall {
       buyMasterMsg(tokenId),
     ),
     deposit: ONE_YOCTO,
+    gas: FT_TRANSFER_CALL_GAS,
   };
 }
 

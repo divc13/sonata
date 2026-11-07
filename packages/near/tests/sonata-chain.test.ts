@@ -2,11 +2,14 @@ import { describe, expect, it } from "bun:test";
 
 import {
   assertMicroUsdc,
+  buildBuyCall,
   buildListCalls,
   buildPassCall,
+  buildWithdrawCall,
   buyMasterMsg,
   createSonataChain,
   extractContractPanic,
+  FT_TRANSFER_CALL_GAS,
   getDemoAccount,
   mapContractError,
   SonataChainError,
@@ -93,6 +96,7 @@ describe("micro-USDC argument building", () => {
       contractId: "usdc-sonata.testnet",
       method: "ft_transfer_call",
       deposit: 1n,
+      gas: FT_TRANSFER_CALL_GAS,
       args: {
         receiver_id: "platform-sonata.testnet",
         amount: "5000000",
@@ -105,6 +109,41 @@ describe("micro-USDC argument building", () => {
   it("builds the market buy message and validates the token slug", () => {
     expect(buyMasterMsg("midnight-drive")).toBe("buy:midnight-drive");
     expect(() => buyMasterMsg("Not A Slug")).toThrow(SonataChainError);
+  });
+
+  it("builds a market buy call with the same 1 yocto and receiver gas", () => {
+    expect(buildBuyCall("midnight-drive", "050000000")).toMatchObject({
+      contractId: "usdc-sonata.testnet",
+      method: "ft_transfer_call",
+      deposit: 1n,
+      gas: FT_TRANSFER_CALL_GAS,
+      args: {
+        receiver_id: "market-sonata.testnet",
+        amount: "50000000",
+        msg: "buy:midnight-drive",
+        memo: null,
+      },
+    });
+  });
+
+  /**
+   * mock-usdc forwards 120 Tgas to the receiver plus 15 Tgas to its resolver.
+   * A smaller attachment reproduces the market buy failure ("Exceeded the
+   * prepaid gas") before any subcall runs.
+   */
+  it("attaches enough gas for the 120 Tgas receiver and resolver", () => {
+    const TGAS = 10n ** 12n;
+    const RECEIVER = 120n * TGAS;
+    const RESOLVER = 15n * TGAS;
+
+    expect(FT_TRANSFER_CALL_GAS).toBeGreaterThanOrEqual(200n * TGAS);
+    expect(FT_TRANSFER_CALL_GAS).toBeGreaterThanOrEqual(RECEIVER + RESOLVER);
+  });
+
+  it("keeps the withdrawal deposit at zero (the wallet attaches its own yocto)", () => {
+    const call = buildWithdrawCall("midnight-drive", "1200000");
+    expect(call.deposit).toBe(0n);
+    expect(call.gas).toBeUndefined();
   });
 
   it("builds approve-then-list calls with the required deposits", () => {
@@ -196,7 +235,7 @@ describe("createSonataChain", () => {
         amount: "5000000",
         msg: "pass",
       },
-      options: { deposit: 1n },
+      options: { deposit: 1n, gas: FT_TRANSFER_CALL_GAS },
     });
   });
 
@@ -221,6 +260,7 @@ describe("createSonataChain", () => {
         amount: "50000000",
         msg: "buy:midnight-drive",
       },
+      options: { deposit: 1n, gas: FT_TRANSFER_CALL_GAS },
     });
   });
 
