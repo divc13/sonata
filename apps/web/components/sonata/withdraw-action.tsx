@@ -51,7 +51,7 @@ export function WithdrawAction({ tokenId, title }: WithdrawActionProps) {
           ? `Withdrawing from ${title}`
           : `Withdraw earnings from ${title}`
       }
-      className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-wait disabled:opacity-60"
+      className="pointer-coarse:-mx-2 inline-flex items-center rounded-sm pointer-coarse:min-h-11 pointer-coarse:px-2 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-wait disabled:opacity-60"
     >
       {pending ? "Withdrawing…" : "Withdraw"}
     </button>

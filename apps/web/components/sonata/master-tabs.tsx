@@ -16,7 +16,7 @@ type MasterTabsProps = {
 };
 
 const triggerClassName =
-  "flex-none px-0 text-sm font-medium text-muted-foreground data-active:text-foreground";
+  "flex-none px-0 text-sm font-medium text-muted-foreground pointer-coarse:min-h-11 data-active:text-foreground";
 
 /** The master detail tabs. Panels are server rendered and pass through. */
 export function MasterTabs({
@@ -29,7 +29,7 @@ export function MasterTabs({
     <Tabs defaultValue="overview" className="gap-6">
       <TabsList
         variant="line"
-        className="h-auto w-full justify-start gap-6 border-b border-border/60 pb-3"
+        className="h-auto! w-full justify-start gap-6 border-b border-border/60 pb-3"
       >
         <TabsTrigger value="overview" className={triggerClassName}>
           Overview

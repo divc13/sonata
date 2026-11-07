@@ -16,7 +16,7 @@ export function DashboardRange() {
   return (
     <fieldset
       aria-label="Earnings range"
-      className="inline-flex h-(--ctl) min-w-0 items-center gap-0.5 rounded-full border border-border/60 bg-card p-0.5"
+      className="inline-flex h-(--ctl) min-w-0 items-center gap-0.5 rounded-full border border-border/60 bg-card p-0.5 pointer-coarse:h-12"
     >
       {ranges.map((item) => (
         <button

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
+import { controlStyles } from "~/lib/control-styles";
 import { cn } from "~/lib/utils";
 
 function SearchForm({ query }: { query: string }) {
@@ -36,7 +37,10 @@ function SearchForm({ query }: { query: string }) {
             <Link
               href="/search"
               aria-label="Clear search"
-              className="grid size-6 shrink-0 place-items-center rounded-(--r-ctl) text-muted-foreground transition-colors duration-fast hover:bg-fill-2 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              className={cn(
+                controlStyles.rowIcon,
+                "grid place-items-center text-muted-foreground transition-colors duration-fast hover:bg-fill-2 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+              )}
             >
               <X aria-hidden="true" className="size-4" />
             </Link>

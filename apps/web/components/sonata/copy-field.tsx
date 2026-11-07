@@ -3,6 +3,7 @@
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
 
+import { controlStyles } from "~/lib/control-styles";
 import { cn } from "~/lib/utils";
 
 type CopyFieldProps = {
@@ -42,7 +43,10 @@ export function CopyField({ label, value, className }: CopyFieldProps) {
         <button
           type="button"
           onClick={copy}
-          className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors duration-fast hover:bg-fill-2 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          className={cn(
+            controlStyles.rowIcon,
+            "inline-flex items-center justify-center text-muted-foreground transition-colors duration-fast hover:bg-fill-2 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+          )}
           aria-label={`Copy ${label}`}
         >
           {copied ? (
