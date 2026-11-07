@@ -380,11 +380,15 @@ for static files here.
 - USDC everywhere is **micro-USDC as text** (6 decimals, e.g. `"50000000"` =
   $50.00); seconds are integers. Never convert through floats — use
   `packages/near`'s `formatUsdMicro`/`microUsdcToUsd` for display.
-- `sonata_epoch.id` comes from the chain (no default); demo seed inserts ids
-  1..8 and the live epoch continues at 9. Listen/store rows written by the
-  indexer must never be rewound by the seed: `seedSonata`
-  (`packages/db/src/sonata-seed.ts`) is guarded by row-existence checks, not
-  upserts, for epochs/payouts/ownership.
+- `sonata_epoch.id` comes from the chain (no default) and real epochs count
+  from `0`. The demo seed writes its history at **negative ids** `-1`…`-8` so a
+  seeded row can never occupy a chain id; `nextEpochId`
+  (`apps/web/lib/sonata-display.ts`) ignores negatives and
+  `formatEpochLabel` renders them as `Demo 1`…`Demo 8`. Listen/store rows
+  written by the indexer must never be rewound by the seed: `seedSonata`
+  (`packages/db/src/sonata-seed.ts`) replaces only its own rows (negative ids,
+  or the deterministic demo tx hash older seeds wrote at ids 1..8), never a
+  chain settlement, and otherwise relies on row-existence checks, not upserts.
 - `sonata_song.artist_handle` stores the bare handle (`"nadia"`); the router
   accepts `@nadia` and normalizes. `sonata_listing` has at most one active row
   per token (contract rule "Already listed").

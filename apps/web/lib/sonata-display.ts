@@ -41,13 +41,38 @@ export function sumMicro(amounts: Iterable<string>): string {
   return total.toString();
 }
 
-/** The next epoch the oracle may settle: `max(id) + 1`, or 0 when empty. */
+/**
+ * The next epoch the oracle may settle: `max(chain id) + 1`, or 0 when no
+ * chain epoch exists yet.
+ *
+ * Seeded demo history is stored with negative ids (see `sonata-seed.ts`), so
+ * those rows never count here: the contract's first real epoch is `0`, and
+ * treating `-1` as history would settle an id the chain has never seen.
+ */
 export function nextEpochId(epochs: readonly { id: number }[]): number {
   let max = -1;
   for (const epoch of epochs) {
-    if (epoch.id > max) max = epoch.id;
+    if (epoch.id >= 0 && epoch.id > max) max = epoch.id;
   }
   return max + 1;
+}
+
+/** Seeded demo history uses negative ids; chain epochs start at 0. */
+export function isDemoEpochId(id: number): boolean {
+  return id < 0;
+}
+
+/**
+ * `-3` -> `"Demo 3"`, `0` -> `"Epoch 0"`. Negative ids are seeded history and
+ * must never read like a chain epoch id.
+ */
+export function formatEpochLabel(id: number): string {
+  return isDemoEpochId(id) ? `Demo ${-id}` : `Epoch ${id}`;
+}
+
+/** Compact chart label: `-3` -> `"D3"`, `0` -> `"E0"`. */
+export function epochAxisLabel(id: number): string {
+  return isDemoEpochId(id) ? `D${-id}` : `E${id}`;
 }
 
 const epochDate = new Intl.DateTimeFormat("en-US", {

@@ -14,6 +14,8 @@ import { pageMetadata } from "~/lib/metadata";
 import { masterHref } from "~/lib/sonata-demo";
 import {
   earningsByEpoch,
+  epochAxisLabel,
+  formatEpochLabel,
   formatListenHours,
   formatMicroUsd,
   formatRatePerHour,
@@ -80,11 +82,13 @@ async function DashboardContent() {
   const chartLabels =
     recentEpochs.length > 1
       ? [
-          `Epoch ${recentEpochs[0].epochId}`,
-          `Epoch ${recentEpochs[Math.floor(recentEpochs.length / 2)].epochId}`,
-          `Epoch ${recentEpochs[recentEpochs.length - 1].epochId}`,
+          epochAxisLabel(recentEpochs[0].epochId),
+          epochAxisLabel(
+            recentEpochs[Math.floor(recentEpochs.length / 2)].epochId,
+          ),
+          epochAxisLabel(recentEpochs[recentEpochs.length - 1].epochId),
         ]
-      : recentEpochs.map((epoch) => `Epoch ${epoch.epochId}`);
+      : recentEpochs.map((epoch) => epochAxisLabel(epoch.epochId));
 
   return (
     <>
@@ -284,7 +288,7 @@ async function DashboardContent() {
               .map((epoch) => (
                 <ReceiptRow
                   key={epoch.epochId}
-                  title={`Epoch ${epoch.epochId}`}
+                  title={formatEpochLabel(epoch.epochId)}
                   meta={formatListenHours(epoch.seconds)}
                   value={formatMicroUsd(epoch.amountUsdc)}
                   detail="Settled in USDC"

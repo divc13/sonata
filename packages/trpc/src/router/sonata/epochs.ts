@@ -30,13 +30,16 @@ export const sonataEpochsRouter = router({
       ctx.db
         .select()
         .from(sonataEpoch)
-        .orderBy(desc(sonataEpoch.id))
+        /* Newest settlement first. Seeded demo history has negative ids, so
+         * ordering by id alone would put the oldest demo epoch first. */
+        .orderBy(desc(sonataEpoch.closedAt), desc(sonataEpoch.id))
         .limit(input?.limit ?? MAX_LIMIT)
         .offset(input?.offset ?? 0),
     ),
 
   byId: publicProcedure
-    .input(z.object({ id: z.number().int().min(0) }))
+    /* Negative ids address seeded demo history; chain epochs start at 0. */
+    .input(z.object({ id: z.number().int() }))
     .output(z.custom<SonataEpochDetail>())
     .query(async ({ input, ctx }) => {
       const [epoch] = await ctx.db

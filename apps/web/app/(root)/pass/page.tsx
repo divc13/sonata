@@ -18,6 +18,7 @@ import {
   passStatusLabel,
   shortHash,
 } from "~/lib/sonata-display";
+import { formatUsdMicro2 } from "~/lib/sonata/market";
 import { api } from "~/lib/trpc/server";
 import { asRoute, cn } from "~/lib/utils";
 
@@ -248,7 +249,7 @@ async function PassContent() {
       <div className="flex flex-col gap-2 border-t border-border/60 pt-6 text-xs leading-5 text-muted-foreground">
         <p>
           {overview.songsCount.toLocaleString("en-US")} masters in the catalogue
-          · {formatMicroUsd(overview.totalPaidUsdc)} paid to song accounts so
+          · {formatUsdMicro2(overview.totalPaidUsdc)} paid to song accounts so
           far.
         </p>
         <p>

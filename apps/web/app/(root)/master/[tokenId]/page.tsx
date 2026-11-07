@@ -21,6 +21,7 @@ import { ReceiptRow } from "~/components/sonata/receipt-row";
 import { Stat } from "~/components/sonata/stat";
 import { getErrorCode } from "~/lib/error-code";
 import { pageMetadata } from "~/lib/metadata";
+import { epochAxisLabel, formatEpochLabel } from "~/lib/sonata-display";
 import { formatUsdMicro2, selectListingForToken } from "~/lib/sonata/market";
 import { api } from "~/lib/trpc/server";
 
@@ -99,7 +100,7 @@ export default async function MasterPage({ params }: MasterPageProps) {
   ]);
   const payoutLabels = [...labelIndexes]
     .filter((index) => index >= 0 && index < payoutSeries.length)
-    .map((index) => `E${payoutSeries[index].epochId}`);
+    .map((index) => epochAxisLabel(payoutSeries[index].epochId));
 
   const recentSeconds = payouts.reduce(
     (total, payout) => total + payout.seconds,
@@ -318,7 +319,7 @@ export default async function MasterPage({ params }: MasterPageProps) {
                     payouts.map((payout) => (
                       <ReceiptRow
                         key={payout.epochId}
-                        title={`Epoch ${payout.epochId}`}
+                        title={formatEpochLabel(payout.epochId)}
                         meta={formatDate(payout.createdAt)}
                         value={formatUsdMicro2(payout.amountUsdc)}
                         detail={`${formatHours(payout.seconds)} verified`}
