@@ -80,6 +80,7 @@ export function Player({ user, playlists, favorites }: PlayerProps) {
   const {
     load,
     isPlaying,
+    pause,
     togglePlayPause,
     getPosition,
     isLoading,
@@ -220,10 +221,13 @@ export function Player({ user, playlists, favorites }: PlayerProps) {
     (itemId: string) => {
       if (!isPlaying || previewPausedRef.current === itemId) return;
       previewPausedRef.current = itemId;
+      /* Pause before seeking: Howler's `seek()` restarts a playing sound
+       * asynchronously (it pauses, moves, then plays), which would undo a
+       * later pause and let the preview keep running past 30 seconds. */
+      pause();
       seek(PREVIEW_SECONDS);
       position.set(PREVIEW_SECONDS);
       setPreviewEnded(true);
-      togglePlayPause();
       if (previewToastedRef.current !== itemId) {
         previewToastedRef.current = itemId;
         toast("Preview ended", {
@@ -231,7 +235,7 @@ export function Player({ user, playlists, favorites }: PlayerProps) {
         });
       }
     },
-    [isPlaying, position, seek, togglePlayPause],
+    [isPlaying, pause, position, seek],
   );
 
   // Watching the audio position (not the position store) keeps the pause exact
