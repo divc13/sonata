@@ -13,6 +13,7 @@ import {
   recentlyPlayed,
   users,
 } from "./schema";
+import { seedSonata } from "./sonata-seed";
 
 async function seed() {
   const databaseUrl = process.env.DATABASE_URL;
@@ -127,6 +128,10 @@ async function seed() {
           .onConflictDoNothing();
       }
     });
+
+    // Sonata demo data (specs/06-demo.md): masters, epochs, payouts, pass.
+    // Idempotent and never rewinds indexer-written rows.
+    await seedSonata(db);
 
     console.log("[seed] Seeding successfully completed.");
   } finally {
