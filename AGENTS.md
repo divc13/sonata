@@ -372,6 +372,33 @@ subresources (`sec-fetch-dest` other than document/iframe) are never counted, so
 `/api/og` has its own 20/min bucket on top of the global one. Do not add CSP enforcement or a limiter
 for static files here.
 
+## Sonata data foundation (`sonata_*`, sonata router, packages/near)
+
+- `packages/db/src/schema.ts` holds the `sonata_*` tables (snake_case columns,
+  no FKs to `user`); `drizzle.config.ts` `tablesFilter` includes `sonata_*`, so
+  `bun run db:generate` must be run for any schema change.
+- USDC everywhere is **micro-USDC as text** (6 decimals, e.g. `"50000000"` =
+  $50.00); seconds are integers. Never convert through floats — use
+  `packages/near`'s `formatUsdMicro`/`microUsdcToUsd` for display.
+- `sonata_epoch.id` comes from the chain (no default); demo seed inserts ids
+  1..8 and the live epoch continues at 9. Listen/store rows written by the
+  indexer must never be rewound by the seed: `seedSonata`
+  (`packages/db/src/sonata-seed.ts`) is guarded by row-existence checks, not
+  upserts, for epochs/payouts/ownership.
+- `sonata_song.artist_handle` stores the bare handle (`"nadia"`); the router
+  accepts `@nadia` and normalizes. `sonata_listing` has at most one active row
+  per token (contract rule "Already listed").
+- Read-only `sonata` tRPC router at `packages/trpc/src/router/sonata/*`
+  (`songs.list/byId`, `artist.byHandle`, `market.listings/listingByToken`,
+  `epochs.list/byId`, `pass.byAccount`, `stats.overview`). Missing primary
+  entities throw `NOT_FOUND`; secondary misses return `[]`/`null`. Trailing
+  30-day earnings are computed from `sonata_payout` rows joined to
+  `sonata_epoch.closed_at` (see `helpers.ts`; `earnings30dUsdc` micro string).
+- `packages/near` is dependency-free (no wallet-selector/near-api-js yet) and
+  re-exports the Sonata DTOs from `@infinitunes/types/src/sonata.ts`; contract
+  ids come from `SONATA_*` env with testnet defaults
+  (`masters/platform/market/usdc.sonata.testnet`).
+
 ## Maintaining this file
 
 Keep this file for knowledge useful to almost every future agent session in this project.
