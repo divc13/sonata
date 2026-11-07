@@ -1,4 +1,5 @@
 import { sonataPayout, sonataSong } from "@infinitunes/db/schema";
+import { DEMO_ROLES, type ChainResult } from "@infinitunes/near";
 import type {
   SonataMasterDetail,
   SonataPayoutRow,
@@ -10,7 +11,13 @@ import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { publicProcedure, router } from "../../trpc";
+import {
+  assertSonataDemoMode,
+  rethrowSonataError,
+  sonataChainFor,
+} from "./demo";
 import { withEarnings } from "./helpers";
+import { microUsdcInput, tokenIdInput } from "./inputs";
 
 /** Maximum page the catalog shell asks for; the app is small enough for 100. */
 const MAX_LIMIT = 100;
@@ -71,5 +78,32 @@ export const sonataSongsRouter = router({
         .limit(10);
 
       return { ...withTrailing, recentPayouts };
+    }),
+
+  /**
+   * Demo-only withdrawal from a master's song account. Omitting `amountUsdc`
+   * calls `withdraw_all`; the song-wallet re-checks ownership on chain.
+   */
+  withdraw: publicProcedure
+    .input(
+      z.object({
+        role: z.enum(DEMO_ROLES),
+        tokenId: tokenIdInput,
+        amountUsdc: microUsdcInput.optional(),
+      }),
+    )
+    .output(z.custom<ChainResult>())
+    .mutation(async ({ input, ctx }) => {
+      assertSonataDemoMode();
+
+      try {
+        return await sonataChainFor(ctx).withdrawFromSong(
+          input.role,
+          input.tokenId,
+          input.amountUsdc,
+        );
+      } catch (error) {
+        rethrowSonataError(error);
+      }
     }),
 });

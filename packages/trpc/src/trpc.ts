@@ -1,5 +1,6 @@
 import type { Auth } from "@infinitunes/auth";
 import type { DbClient } from "@infinitunes/db/client";
+import type { SonataChain } from "@infinitunes/near";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 
@@ -19,6 +20,11 @@ export type Session = {
 export type TRPCContext = {
   db: DbClient;
   catalogApi?: typeof api;
+  /**
+   * Optional chain client override. The web adapter leaves this undefined and
+   * the sonata router uses the process-wide demo chain; tests inject a fake.
+   */
+  sonataChain?: SonataChain;
   /**
    * A loaded session, or a thunk. The RSC caller passes `getSession` so
    * public procedures skip the lookup; the HTTP adapter passes the value.
