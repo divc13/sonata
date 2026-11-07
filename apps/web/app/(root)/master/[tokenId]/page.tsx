@@ -14,6 +14,7 @@ import { ImageWithFallback } from "~/components/image-with-fallback";
 import { CopyField } from "~/components/sonata/copy-field";
 import { EarningsBars } from "~/components/sonata/earnings-bars";
 import { MasterActions } from "~/components/sonata/master-actions";
+import { MasterHistory } from "~/components/sonata/master-history";
 import { MasterTabs } from "~/components/sonata/master-tabs";
 import { PlayMaster } from "~/components/sonata/play-master";
 import { Receipt } from "~/components/sonata/receipt";
@@ -282,6 +283,12 @@ export default async function MasterPage({ params }: MasterPageProps) {
             }
             ownership={
               <div className="flex flex-col gap-6">
+                <MasterHistory
+                  ownership={master.ownershipHistory}
+                  listings={master.listingHistory}
+                  payouts={payouts}
+                />
+
                 <Receipt title="Ownership record">
                   <ReceiptRow
                     title="Master minted"

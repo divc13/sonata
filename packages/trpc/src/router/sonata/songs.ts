@@ -1,13 +1,16 @@
-import { sonataPayout, sonataSong } from "@infinitunes/db/schema";
+import {
+  sonataListing,
+  sonataOwnership,
+  sonataPayout,
+  sonataSong,
+} from "@infinitunes/db/schema";
 import { DEMO_ROLES, type ChainResult, type DemoRole } from "@infinitunes/near";
 import type {
   SonataMasterDetail,
-  SonataPayoutRow,
   SonataSongWithEarnings,
 } from "@infinitunes/types";
 import { TRPCError } from "@trpc/server";
-import { asc } from "drizzle-orm";
-import { desc, eq } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { publicProcedure, router, type TRPCContext } from "../../trpc";
@@ -108,21 +111,57 @@ export const sonataSongsRouter = router({
 
       const [withTrailing] = await withEarnings(ctx.db, [song]);
 
-      const recentPayouts: SonataPayoutRow[] = await ctx.db
-        .select({
-          epochId: sonataPayout.epochId,
-          tokenId: sonataPayout.tokenId,
-          seconds: sonataPayout.seconds,
-          amountUsdc: sonataPayout.amountUsdc,
-          txHash: sonataPayout.txHash,
-          createdAt: sonataPayout.createdAt,
-        })
-        .from(sonataPayout)
-        .where(eq(sonataPayout.tokenId, input.tokenId))
-        .orderBy(desc(sonataPayout.epochId))
-        .limit(10);
+      const [recentPayouts, ownershipHistory, listingHistory] =
+        await Promise.all([
+          ctx.db
+            .select({
+              epochId: sonataPayout.epochId,
+              tokenId: sonataPayout.tokenId,
+              seconds: sonataPayout.seconds,
+              amountUsdc: sonataPayout.amountUsdc,
+              txHash: sonataPayout.txHash,
+              createdAt: sonataPayout.createdAt,
+            })
+            .from(sonataPayout)
+            .where(eq(sonataPayout.tokenId, input.tokenId))
+            .orderBy(desc(sonataPayout.epochId))
+            .limit(10),
+          ctx.db
+            .select({
+              id: sonataOwnership.id,
+              tokenId: sonataOwnership.tokenId,
+              ownerAccountId: sonataOwnership.ownerAccountId,
+              acquiredAt: sonataOwnership.acquiredAt,
+              priceUsdc: sonataOwnership.priceUsdc,
+              txHash: sonataOwnership.txHash,
+              eventType: sonataOwnership.eventType,
+            })
+            .from(sonataOwnership)
+            .where(eq(sonataOwnership.tokenId, input.tokenId))
+            .orderBy(asc(sonataOwnership.acquiredAt), asc(sonataOwnership.id)),
+          ctx.db
+            .select({
+              id: sonataListing.id,
+              tokenId: sonataListing.tokenId,
+              sellerAccountId: sonataListing.sellerAccountId,
+              priceUsdc: sonataListing.priceUsdc,
+              active: sonataListing.active,
+              txHash: sonataListing.txHash,
+              createdAt: sonataListing.createdAt,
+              cancelledAt: sonataListing.cancelledAt,
+              soldAt: sonataListing.soldAt,
+            })
+            .from(sonataListing)
+            .where(eq(sonataListing.tokenId, input.tokenId))
+            .orderBy(asc(sonataListing.createdAt), asc(sonataListing.id)),
+        ]);
 
-      return { ...withTrailing, recentPayouts };
+      return {
+        ...withTrailing,
+        recentPayouts,
+        ownershipHistory,
+        listingHistory,
+      };
     }),
 
   /**
