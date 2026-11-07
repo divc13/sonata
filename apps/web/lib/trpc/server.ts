@@ -6,9 +6,15 @@ import { cache } from "react";
 
 import { getSession } from "~/lib/auth";
 import { cachedApi } from "~/lib/cached-api";
+import { sonataSettlementService } from "~/lib/sonata/settlement";
 
 const createTRPCContext = cache(() => {
-  return { db, session: getSession, catalogApi: cachedApi };
+  return {
+    db,
+    session: getSession,
+    catalogApi: cachedApi,
+    sonataSettlement: sonataSettlementService,
+  };
 });
 
 const getContext = () => createTRPCContext();

@@ -6,6 +6,12 @@ import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { publicProcedure, router } from "../../trpc";
+import {
+  assertSonataDemoMode,
+  rethrowSonataError,
+  sonataSettlementFor,
+} from "./demo";
+import type { DemoSettlementResult } from "./service";
 
 const MAX_LIMIT = 100;
 
@@ -60,5 +66,24 @@ export const sonataEpochsRouter = router({
         .orderBy(desc(sonataPayout.amountUsdc));
 
       return { ...epoch, payouts };
+    }),
+
+  /**
+   * Demo-only, oracle-only settlement. The service aggregates the current
+   * rolling window, signs `platform.settle_epoch` with
+   * `SONATA_ORACLE_SECRET_KEY`, then mirrors the chain epoch and per-song
+   * payouts into Postgres. Existing epoch ids are rejected before the call.
+   */
+  settle: publicProcedure
+    .input(z.object({ epochId: z.number().int().min(0) }))
+    .output(z.custom<DemoSettlementResult>())
+    .mutation(async ({ input, ctx }) => {
+      assertSonataDemoMode();
+
+      try {
+        return await sonataSettlementFor(ctx).runDemoSettlement(input.epochId);
+      } catch (error) {
+        rethrowSonataError(error);
+      }
     }),
 });
