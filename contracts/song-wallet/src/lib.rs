@@ -13,8 +13,8 @@
 use near_sdk::json_types::U128;
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{
-    env, ext_contract, log, near, AccountId, Gas, PanicOnDefault, Promise, PromiseOrValue,
-    PromiseResult,
+    env, ext_contract, log, near, AccountId, Gas, NearToken, PanicOnDefault, Promise,
+    PromiseOrValue, PromiseResult,
 };
 use serde_json::json;
 
@@ -22,10 +22,27 @@ use serde_json::json;
 pub const SONATA_EVENT_STANDARD: &str = "sonata";
 pub const SONATA_EVENT_VERSION: &str = "1.0.0";
 
+/// NEP-141 requires exactly this much attached to `ft_transfer`.
+pub const ONE_YOCTONEAR: NearToken = NearToken::from_yoctonear(1);
+
+/// Gas for the `nft_token` ownership view.
 const GAS_FOR_OWNER_CHECK: Gas = Gas::from_tgas(10);
+/// Gas for `ft_balance_of` in `withdraw_all`.
 const GAS_FOR_BALANCE_CHECK: Gas = Gas::from_tgas(10);
-const GAS_FOR_SEND_FUNDS: Gas = Gas::from_tgas(25);
-const GAS_FOR_SEND_FUNDS_CALLBACK: Gas = Gas::from_tgas(15);
+/// Gas for the USDC `ft_transfer` promise.
+const GAS_FOR_FT_TRANSFER: Gas = Gas::from_tgas(25);
+/// Gas for the final `on_funds_sent` callback.
+const GAS_FOR_FUNDS_SENT: Gas = Gas::from_tgas(15);
+/// Budget for `on_owner_checked`. Inside it the wallet schedules the USDC
+/// transfer (25 Tgas) and `on_funds_sent` (15 Tgas), so it must be at least
+/// 40 Tgas or the receipt panics with "Exceeded the prepaid gas" before the
+/// transfer ever leaves the wallet.
+const GAS_FOR_SEND_FUNDS: Gas = Gas::from_tgas(45);
+/// Budget for `on_balance_fetched`. It schedules the owner check (10 Tgas)
+/// and `on_owner_checked` (45 Tgas), so it must be at least 55 Tgas.
+const GAS_FOR_ON_BALANCE_FETCHED: Gas = Gas::from_tgas(60);
+/// Gas for the `reset_claim` ownership callback.
+const GAS_FOR_RESET_OWNER_CHECK: Gas = Gas::from_tgas(10);
 const WITHDRAW_MEMO: &str = "Sonata earnings";
 const STATE_KEY: &[u8] = b"STATE";
 
@@ -90,6 +107,9 @@ pub struct Contract {
     pub is_claiming: bool,
     /// In-flight withdrawal request, cleared when the chain completes.
     pub pending: Option<PendingWithdraw>,
+    /// Human-readable reason of the last rejected withdrawal, so a demo/UI can
+    /// surface an ownership failure instead of a silent success.
+    pub last_error: Option<String>,
 }
 
 /// Emit a Sonata NEP-297 event.
@@ -121,6 +141,7 @@ impl Contract {
             payment_token: payment_token.clone(),
             is_claiming: false,
             pending: None,
+            last_error: None,
         }
     }
 
@@ -130,6 +151,7 @@ impl Contract {
         let caller = env::predecessor_account_id();
         assert!(amount.0 > 0, "Amount must be positive");
         self.assert_ready();
+        self.last_error = None;
         self.is_claiming = true;
         self.pending = Some(PendingWithdraw {
             caller: caller.clone(),
@@ -157,6 +179,7 @@ impl Contract {
     pub fn withdraw_all(&mut self) -> Promise {
         let caller = env::predecessor_account_id();
         self.assert_ready();
+        self.last_error = None;
         self.is_claiming = true;
         self.pending = Some(PendingWithdraw {
             caller: caller.clone(),
@@ -169,7 +192,7 @@ impl Contract {
             .ft_balance_of(env::current_account_id())
             .then(
                 Contract::ext(env::current_account_id())
-                    .with_static_gas(GAS_FOR_OWNER_CHECK)
+                    .with_static_gas(GAS_FOR_ON_BALANCE_FETCHED)
                     .on_balance_fetched(),
             )
     }
@@ -227,7 +250,8 @@ impl Contract {
                     pending.stage = ClaimStage::SendFunds;
                     self.pending = Some(pending);
                     return ext_fungible_token::ext(self.payment_token.clone())
-                        .with_static_gas(GAS_FOR_SEND_FUNDS)
+                        .with_static_gas(GAS_FOR_FT_TRANSFER)
+                        .with_attached_deposit(ONE_YOCTONEAR)
                         .ft_transfer(
                             master.owner_id.clone(),
                             amount,
@@ -235,7 +259,7 @@ impl Contract {
                         )
                         .then(
                             Contract::ext(env::current_account_id())
-                                .with_static_gas(GAS_FOR_SEND_FUNDS_CALLBACK)
+                                .with_static_gas(GAS_FOR_FUNDS_SENT)
                                 .on_funds_sent(),
                         )
                         .into();
@@ -275,10 +299,54 @@ impl Contract {
                     }),
                 );
             }
+        } else if finished {
+            // The USDC transfer receipt failed. The guard is released below so
+            // a failed transfer can never permanently wedge the wallet.
+            log!("Withdraw rejected: transfer failed");
+            self.last_error = Some("Transfer failed".to_string());
         }
         // The guard is reset in every path listed below.
         self.reset_guard();
         PromiseOrValue::Value(U128(0))
+    }
+
+    /// Recover a wallet whose claim guard was left set by a failed transfer.
+    ///
+    /// Only the current NFT owner may clear the guard; anyone else is
+    /// rejected and the state is left untouched. This makes a wedged wallet
+    /// recoverable without an admin key (the wallet has none).
+    pub fn reset_claim(&mut self) -> Promise {
+        let caller = env::predecessor_account_id();
+        ext_nft_collection::ext(self.collection_id.clone())
+            .with_static_gas(GAS_FOR_OWNER_CHECK)
+            .nft_token(self.token_id.clone())
+            .then(
+                Contract::ext(env::current_account_id())
+                    .with_static_gas(GAS_FOR_RESET_OWNER_CHECK)
+                    .on_reset_owner_checked(caller),
+            )
+    }
+
+    /// Callback for `reset_claim`: clear the guard only when the caller stored
+    /// at method entry is the token's current owner.
+    #[private]
+    pub fn on_reset_owner_checked(&mut self, caller: AccountId) -> bool {
+        let owner = match env::promise_result(0) {
+            PromiseResult::Successful(bytes) => {
+                serde_json::from_slice::<Option<JsonMaster>>(&bytes)
+                    .ok()
+                    .flatten()
+                    .map(|master| master.owner_id)
+            }
+            PromiseResult::Failed => None,
+        };
+        if owner.as_ref() == Some(&caller) {
+            self.reset_guard();
+            true
+        } else {
+            log!("Reset rejected: Not the owner");
+            false
+        }
     }
 
     /// Contract configuration: collection, token id, payment token, and
@@ -289,6 +357,7 @@ impl Contract {
             token_id: self.token_id.clone(),
             payment_token: self.payment_token.clone(),
             is_claiming: self.is_claiming,
+            last_error: self.last_error.clone(),
         }
     }
 
@@ -313,6 +382,7 @@ impl Contract {
     /// match the spec's error names so tooling can match on them.
     fn abort(&mut self, reason: &str) {
         log!("Withdraw rejected: {}", reason);
+        self.last_error = Some(reason.to_string());
         self.reset_guard();
     }
 }
@@ -325,12 +395,14 @@ pub struct Config {
     pub token_id: String,
     pub payment_token: AccountId,
     pub is_claiming: bool,
+    pub last_error: Option<String>,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use near_sdk::test_utils::{accounts, VMContextBuilder};
+    use near_sdk::mock::MockAction;
+    use near_sdk::test_utils::{accounts, get_created_receipts, get_logs, VMContextBuilder};
     use near_sdk::{testing_env, RuntimeFeesConfig};
     use std::collections::HashMap;
 
@@ -367,6 +439,41 @@ mod tests {
             .build());
     }
 
+    /// Enter a promise callback with a mocked single result. The predecessor
+    /// is the wallet itself, exactly as on chain.
+    fn callback_env(result: PromiseResult) {
+        testing_env!(
+            VMContextBuilder::new()
+                .current_account_id(accounts(0))
+                .predecessor_account_id(accounts(0))
+                .build(),
+            near_sdk::test_vm_config(),
+            RuntimeFeesConfig::test(),
+            HashMap::default(),
+            vec![result]
+        );
+    }
+
+    /// A successful `nft_token` result naming `owner` as the current owner.
+    fn master_result(owner: usize) -> PromiseResult {
+        let master = serde_json::json!({
+            "token_id": "midnight-drive",
+            "owner_id": accounts(owner).to_string(),
+        });
+        PromiseResult::Successful(serde_json::to_vec(&master).unwrap())
+    }
+
+    /// Create a stale in-flight claim, as a failed transfer used to leave it.
+    fn wedge(wallet: &mut Contract) {
+        wallet.is_claiming = true;
+        wallet.pending = Some(PendingWithdraw {
+            caller: accounts(OWNER),
+            amount: Some(U128(1_000_000)),
+            balance: U128(0),
+            stage: ClaimStage::OwnerCheck,
+        });
+    }
+
     #[test]
     fn new_reads_config() {
         let wallet = wallet();
@@ -375,6 +482,7 @@ mod tests {
         assert_eq!(config.token_id, "midnight-drive");
         assert_eq!(config.payment_token, accounts(USDC));
         assert!(!config.is_claiming);
+        assert_eq!(config.last_error, None);
         assert!(wallet.pending.is_none());
     }
 
@@ -483,5 +591,133 @@ mod tests {
         wallet.on_owner_checked(U128(0));
         assert!(!wallet.is_claiming);
         assert!(wallet.pending.is_none());
+        assert_eq!(wallet.last_error.as_deref(), Some("Not the owner"));
+        assert!(get_logs()
+            .iter()
+            .any(|log| log.contains("Withdraw rejected: Not the owner")));
+    }
+
+    /// NEP-141 requires exactly 1 yoctoNEAR. Without it `mock-usdc` panics
+    /// ("Requires attached deposit of exactly 1 yoctoNEAR") and the withdrawal
+    /// silently fails on chain.
+    #[test]
+    fn owner_withdraw_attaches_one_yocto_to_ft_transfer() {
+        s();
+        let mut wallet = wallet();
+        as_owner();
+        wallet.withdraw(U128(1_000_000));
+        callback_env(master_result(OWNER));
+        wallet.on_owner_checked(U128(0));
+
+        let receipts = get_created_receipts();
+        let transfer = receipts
+            .iter()
+            .find(|receipt| receipt.receiver_id == accounts(USDC))
+            .expect("a successful owner check must call the payment token");
+        let (deposit, gas) = transfer
+            .actions
+            .iter()
+            .find_map(|action| match action {
+                MockAction::FunctionCallWeight {
+                    method_name,
+                    attached_deposit,
+                    prepaid_gas,
+                    ..
+                } if method_name == b"ft_transfer" => Some((*attached_deposit, *prepaid_gas)),
+                _ => None,
+            })
+            .expect("the payment-token receipt must call ft_transfer");
+
+        assert_eq!(deposit, NearToken::from_yoctonear(1));
+        assert!(gas.as_gas() >= GAS_FOR_FT_TRANSFER.as_gas());
+    }
+
+    /// A receipt may only schedule subcalls up to its own prepaid gas. The
+    /// owner-check callback schedules the USDC transfer plus the final
+    /// callback, so its budget must cover both.
+    #[test]
+    fn callback_gas_budgets_cover_their_subcalls() {
+        assert!(
+            GAS_FOR_SEND_FUNDS.as_gas()
+                >= GAS_FOR_FT_TRANSFER.as_gas() + GAS_FOR_FUNDS_SENT.as_gas(),
+            "on_owner_checked must fit ft_transfer and on_funds_sent"
+        );
+        assert!(
+            GAS_FOR_ON_BALANCE_FETCHED.as_gas()
+                >= GAS_FOR_OWNER_CHECK.as_gas() + GAS_FOR_SEND_FUNDS.as_gas(),
+            "on_balance_fetched must fit nft_token and on_owner_checked"
+        );
+    }
+
+    /// A failed USDC transfer always releases the guard, so the owner can
+    /// retry. A failure must never wedge the wallet.
+    #[test]
+    fn failed_transfer_releases_guard_and_allows_retry() {
+        s();
+        let mut wallet = wallet();
+        as_owner();
+        wallet.withdraw(U128(1_000_000));
+        callback_env(master_result(OWNER));
+        wallet.on_owner_checked(U128(0));
+        assert_eq!(
+            wallet.pending.as_ref().unwrap().stage,
+            ClaimStage::SendFunds
+        );
+
+        callback_env(PromiseResult::Failed);
+        wallet.on_funds_sent();
+        assert!(!wallet.is_claiming);
+        assert!(wallet.pending.is_none());
+        assert_eq!(wallet.last_error.as_deref(), Some("Transfer failed"));
+
+        as_owner();
+        wallet.withdraw(U128(500_000));
+        assert!(wallet.is_claiming);
+        assert_eq!(wallet.last_error, None);
+    }
+
+    /// The owner can recover a wallet left in `Claim in progress`.
+    #[test]
+    fn reset_claim_clears_the_guard_for_the_owner() {
+        s();
+        let mut wallet = wallet();
+        wedge(&mut wallet);
+        as_owner();
+        wallet.reset_claim();
+        callback_env(master_result(OWNER));
+
+        assert!(wallet.on_reset_owner_checked(accounts(OWNER)));
+        assert!(!wallet.is_claiming);
+        assert!(wallet.pending.is_none());
+    }
+
+    /// Nobody but the current NFT owner can clear the guard.
+    #[test]
+    fn reset_claim_rejects_non_owner_and_keeps_the_guard() {
+        s();
+        let mut wallet = wallet();
+        wedge(&mut wallet);
+
+        callback_env(master_result(OWNER));
+        assert!(!wallet.on_reset_owner_checked(accounts(ATTACKER)));
+        assert!(wallet.is_claiming);
+        assert!(wallet.pending.is_some());
+        assert!(get_logs()
+            .iter()
+            .any(|log| log.contains("Reset rejected: Not the owner")));
+    }
+
+    /// A failed `nft_token` view must not clear anything: the caller cannot
+    /// prove ownership.
+    #[test]
+    fn reset_claim_keeps_the_guard_when_owner_check_fails() {
+        s();
+        let mut wallet = wallet();
+        wedge(&mut wallet);
+
+        callback_env(PromiseResult::Failed);
+        assert!(!wallet.on_reset_owner_checked(accounts(OWNER)));
+        assert!(wallet.is_claiming);
+        assert!(wallet.pending.is_some());
     }
 }
