@@ -27,7 +27,7 @@ source "$ROOT/ops/testnet.env"
 
 CATALOGUE="$ROOT/scripts/demo-catalogue.json"
 NETWORK="${NEAR_NETWORK:-testnet}"
-RPC_URL="${NEAR_RPC_URL:-https://rpc.testnet.near.org}"
+RPC_URL="${SONATA_RPC_URL:-${NEAR_RPC_URL:-https://rpc.testnet.near.org}}"
 SIGN_WITH="${SIGN_WITH:-sign-with-keychain}"
 
 MINT_DEPOSIT="${MINT_DEPOSIT:-0.1NEAR}"
@@ -89,7 +89,7 @@ PY
 rpc_view() {
   local account="$1" method="$2" args="${3:-'{}'}" args_b64 body
   args_b64=$(printf '%s' "$args" | base64 | tr -d '\n')
-  body=$(curl -fsS -X POST "$RPC_URL" \
+  body=$(curl -fsS --retry 5 --retry-delay 1 --retry-all-errors -X POST "$RPC_URL" \
     -H 'Content-Type: application/json' \
     -d "{\"jsonrpc\":\"2.0\",\"id\":\"sonata-mint-demo\",\"method\":\"query\",\"params\":{\"request_type\":\"call_function\",\"finality\":\"final\",\"account_id\":\"$account\",\"method_name\":\"$method\",\"args_base64\":\"$args_b64\"}}")
   printf '%s' "$body" | python3 -c '
@@ -114,17 +114,18 @@ print(value)
 ' "$@"
 }
 
+# 0 = contract code present, 1 = no code, 2 = the RPC could not answer.
 account_has_code() {
   local account="$1" body
-  body=$(curl -fsS -X POST "$RPC_URL" \
+  body=$(curl -fsS --retry 5 --retry-delay 1 --retry-all-errors -X POST "$RPC_URL" \
     -H 'Content-Type: application/json' \
-    -d "{\"jsonrpc\":\"2.0\",\"id\":\"sonata-mint-demo\",\"method\":\"query\",\"params\":{\"request_type\":\"view_code\",\"finality\":\"final\",\"account_id\":\"$account\"}}") || return 1
+    -d "{\"jsonrpc\":\"2.0\",\"id\":\"sonata-mint-demo\",\"method\":\"query\",\"params\":{\"request_type\":\"view_code\",\"finality\":\"final\",\"account_id\":\"$account\"}}") || return 2
   printf '%s' "$body" | grep -q '"code_base64":"[A-Za-z0-9+/]'
 }
 
 account_exists() {
   local account="$1" body
-  body=$(curl -fsS -X POST "$RPC_URL" \
+  body=$(curl -fsS --retry 5 --retry-delay 1 --retry-all-errors -X POST "$RPC_URL" \
     -H 'Content-Type: application/json' \
     -d "{\"jsonrpc\":\"2.0\",\"id\":\"sonata-mint-demo\",\"method\":\"query\",\"params\":{\"request_type\":\"view_account\",\"finality\":\"final\",\"account_id\":\"$account\"}}") || return 1
   ! printf '%s' "$body" | grep -q '"error"'
@@ -232,13 +233,19 @@ wait_for_pass() {
 }
 
 require_deployed() {
-  local pair account name
+  local pair account name status
   for pair in "$PLATFORM_ACCOUNT:platform" "$MARKET_ACCOUNT:market" \
     "$MASTERS_ACCOUNT:master-nft" "$USDC_ACCOUNT:mock-usdc"; do
     account="${pair%%:*}"
     name="${pair#*:}"
-    account_has_code "$account" ||
+    status=0
+    account_has_code "$account" || status=$?
+    if [ "$status" -eq 2 ]; then
+      die "RPC could not read $account; refusing to guess whether $name is deployed"
+    fi
+    if [ "$status" -ne 0 ]; then
       die "$name is not deployed at $account; run scripts/deploy-platform-market.sh first"
+    fi
   done
 
   local config platform payment mint_deposit

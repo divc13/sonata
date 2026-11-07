@@ -29,7 +29,7 @@ WASM_DIR="$ROOT/contracts/target/wasm32-unknown-unknown/release"
 PLATFORM_WASM="$WASM_DIR/platform.wasm"
 MARKET_WASM="$WASM_DIR/market.wasm"
 NETWORK="${NEAR_NETWORK:-testnet}"
-RPC_URL="${NEAR_RPC_URL:-https://rpc.testnet.near.org}"
+RPC_URL="${SONATA_RPC_URL:-${NEAR_RPC_URL:-https://rpc.testnet.near.org}}"
 SIGN_WITH="${SIGN_WITH:-sign-with-keychain}"
 
 # Discriminating demo parameters (specs/02-contracts.md, specs/06-demo.md).
@@ -94,7 +94,7 @@ PY
 rpc_view() {
   local account="$1" method="$2" args="${3:-'{}'}" args_b64 body
   args_b64=$(printf '%s' "$args" | base64 | tr -d '\n')
-  body=$(curl -fsS -X POST "$RPC_URL" \
+  body=$(curl -fsS --retry 5 --retry-delay 1 --retry-all-errors -X POST "$RPC_URL" \
     -H 'Content-Type: application/json' \
     -d "{\"jsonrpc\":\"2.0\",\"id\":\"sonata-platform-market\",\"method\":\"query\",\"params\":{\"request_type\":\"call_function\",\"finality\":\"final\",\"account_id\":\"$account\",\"method_name\":\"$method\",\"args_base64\":\"$args_b64\"}}")
   printf '%s' "$body" | python3 -c '
@@ -119,17 +119,18 @@ print(value)
 ' "$@"
 }
 
+# 0 = contract code present, 1 = no code, 2 = the RPC could not answer.
 account_has_code() {
   local account="$1" body
-  body=$(curl -fsS -X POST "$RPC_URL" \
+  body=$(curl -fsS --retry 5 --retry-delay 1 --retry-all-errors -X POST "$RPC_URL" \
     -H 'Content-Type: application/json' \
-    -d "{\"jsonrpc\":\"2.0\",\"id\":\"sonata-platform-market\",\"method\":\"query\",\"params\":{\"request_type\":\"view_code\",\"finality\":\"final\",\"account_id\":\"$account\"}}") || return 1
+    -d "{\"jsonrpc\":\"2.0\",\"id\":\"sonata-platform-market\",\"method\":\"query\",\"params\":{\"request_type\":\"view_code\",\"finality\":\"final\",\"account_id\":\"$account\"}}") || return 2
   printf '%s' "$body" | grep -q '"code_base64":"[A-Za-z0-9+/]'
 }
 
 account_balance() {
   local account="$1" body
-  body=$(curl -fsS -X POST "$RPC_URL" \
+  body=$(curl -fsS --retry 5 --retry-delay 1 --retry-all-errors -X POST "$RPC_URL" \
     -H 'Content-Type: application/json' \
     -d "{\"jsonrpc\":\"2.0\",\"id\":\"sonata-platform-market\",\"method\":\"query\",\"params\":{\"request_type\":\"view_account\",\"finality\":\"final\",\"account_id\":\"$account\"}}") || return 2
   printf '%s' "$body" | python3 -c '
@@ -173,12 +174,19 @@ PY
 }
 
 wait_for_code() {
-  local account="$1" tries="${2:-30}" i
+  local account="$1" tries="${2:-30}" i status
   for ((i = 0; i < tries; i++)); do
-    if account_has_code "$account"; then
+    status=0
+    account_has_code "$account" || status=$?
+    if [ "$status" -eq 0 ]; then
       return 0
     fi
-    sleep 1
+    if [ "$status" -eq 1 ]; then
+      sleep 1
+    else
+      # Do not mistake an RPC hiccup for a failed deploy.
+      sleep 2
+    fi
   done
   return 1
 }
@@ -289,7 +297,12 @@ PY
 }
 
 deploy_platform() {
-  if account_has_code "$PLATFORM_ACCOUNT"; then
+  local status=0
+  account_has_code "$PLATFORM_ACCOUNT" || status=$?
+  if [ "$status" -eq 2 ]; then
+    die "RPC could not read $PLATFORM_ACCOUNT; refusing to guess whether it is deployed"
+  fi
+  if [ "$status" -eq 0 ]; then
     say "platform already deployed at $PLATFORM_ACCOUNT (skipping deploy)"
     return 0
   fi
@@ -308,7 +321,12 @@ deploy_platform() {
 }
 
 deploy_market() {
-  if account_has_code "$MARKET_ACCOUNT"; then
+  local status=0
+  account_has_code "$MARKET_ACCOUNT" || status=$?
+  if [ "$status" -eq 2 ]; then
+    die "RPC could not read $MARKET_ACCOUNT; refusing to guess whether it is deployed"
+  fi
+  if [ "$status" -eq 0 ]; then
     say "market already deployed at $MARKET_ACCOUNT (skipping deploy)"
     return 0
   fi

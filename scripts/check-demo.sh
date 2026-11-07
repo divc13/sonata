@@ -21,7 +21,9 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT/ops/testnet.env"
 
 NETWORK="${NEAR_NETWORK:-testnet}"
-RPC_URL="${NEAR_RPC_URL:-https://rpc.testnet.near.org}"
+# rpc.testnet.near.org throttles bursts of view calls; point this at
+# https://archival-rpc.testnet.fastnear.com/ when re-running in a loop.
+RPC_URL="${SONATA_RPC_URL:-${NEAR_RPC_URL:-https://rpc.testnet.near.org}}"
 WASM_DIR="$ROOT/contracts/target/wasm32-unknown-unknown/release"
 CATALOGUE="$ROOT/scripts/demo-catalogue.json"
 
@@ -56,7 +58,7 @@ assert_eq() {
 call_view() {
   local account="$1" method="$2" args="${3:-'{}'}" args_b64 body
   args_b64=$(printf '%s' "$args" | base64 | tr -d '\n')
-  body=$(curl -fsS -X POST "$RPC_URL" \
+  body=$(curl -fsS --retry 5 --retry-delay 1 --retry-all-errors -X POST "$RPC_URL" \
     -H 'Content-Type: application/json' \
     -d "{\"jsonrpc\":\"2.0\",\"id\":\"sonata-check\",\"method\":\"query\",\"params\":{\"request_type\":\"call_function\",\"finality\":\"final\",\"account_id\":\"$account\",\"method_name\":\"$method\",\"args_base64\":\"$args_b64\"}}")
   printf '%s' "$body" | python3 -c '
@@ -83,17 +85,17 @@ print(value)
 
 account_has_code() {
   local account="$1" body
-  body=$(curl -fsS -X POST "$RPC_URL" \
+  body=$(curl -fsS --retry 5 --retry-delay 1 --retry-all-errors -X POST "$RPC_URL" \
     -H 'Content-Type: application/json' \
     -d "{\"jsonrpc\":\"2.0\",\"id\":\"sonata-check\",\"method\":\"query\",\"params\":{\"request_type\":\"view_code\",\"finality\":\"final\",\"account_id\":\"$account\"}}") || return 1
   printf '%s' "$body" | grep -q '"code_base64":"[A-Za-z0-9+/]'
 }
 
-# Code hash of an account, or exit 3 when the account does not exist. Exit 2
-# means the RPC itself could not answer.
-account_code_hash() {
+# `code_hash` and `global_contract_hash` of an account, tab separated. Exits 3
+# when the account does not exist, 2 when the RPC itself could not answer.
+account_code_state() {
   local account="$1" body
-  body=$(curl -fsS -X POST "$RPC_URL" \
+  body=$(curl -fsS --retry 5 --retry-delay 1 --retry-all-errors -X POST "$RPC_URL" \
     -H 'Content-Type: application/json' \
     -d "{\"jsonrpc\":\"2.0\",\"id\":\"sonata-check\",\"method\":\"query\",\"params\":{\"request_type\":\"view_account\",\"finality\":\"final\",\"account_id\":\"$account\"}}") || return 2
   printf '%s' "$body" | python3 -c '
@@ -101,14 +103,18 @@ import json, sys
 response = json.load(sys.stdin)
 if "error" in response:
     sys.exit(3)
-print(response["result"].get("code_hash", ""))
+result = response["result"]
+print("\t".join([
+    result.get("code_hash", ""),
+    result.get("global_contract_hash", "") or "",
+]))
 '
 }
 
-# Number of access keys on an account. Same exit codes as account_code_hash.
+# Number of access keys on an account. Same exit codes as account_code_state.
 access_key_count() {
   local account="$1" body
-  body=$(curl -fsS -X POST "$RPC_URL" \
+  body=$(curl -fsS --retry 5 --retry-delay 1 --retry-all-errors -X POST "$RPC_URL" \
     -H 'Content-Type: application/json' \
     -d "{\"jsonrpc\":\"2.0\",\"id\":\"sonata-check\",\"method\":\"query\",\"params\":{\"request_type\":\"view_access_key_list\",\"finality\":\"final\",\"account_id\":\"$account\"}}") || return 2
   printf '%s' "$body" | python3 -c '
@@ -248,7 +254,7 @@ PY
 
 global_code_exists() {
   local hash="$1" body
-  body=$(curl -fsS -X POST "$RPC_URL" \
+  body=$(curl -fsS --retry 5 --retry-delay 1 --retry-all-errors -X POST "$RPC_URL" \
     -H 'Content-Type: application/json' \
     -d "{\"jsonrpc\":\"2.0\",\"id\":\"sonata-check\",\"method\":\"query\",\"params\":{\"request_type\":\"view_global_contract_code\",\"finality\":\"final\",\"code_hash\":\"$hash\"}}") || return 1
   printf '%s' "$body" | grep -q '"code_base64":"[A-Za-z0-9+/]'
@@ -390,7 +396,7 @@ if [ -n "${config_hash:-}" ]; then
     sub="$token.$MASTERS_ACCOUNT"
 
     status=0
-    hash=$(account_code_hash "$sub") || status=$?
+    state=$(account_code_state "$sub") || status=$?
     if [ "$status" -eq 3 ]; then
       fail "$sub does not exist"
       continue
@@ -399,12 +405,15 @@ if [ -n "${config_hash:-}" ]; then
       continue
     fi
 
-    if [ "$hash" = "11111111111111111111111111111111" ]; then
-      fail "$sub has no code"
-    elif [ "$hash" != "$config_hash" ]; then
-      fail "$sub code hash $hash != collection $config_hash"
-    else
+    IFS=$'\t' read -r code_hash global_hash <<<"$state"
+    if [ -n "$global_hash" ] && [ "$global_hash" = "$config_hash" ]; then
+      pass "$sub uses the global song-wallet code"
+    elif [ "$code_hash" = "$config_hash" ]; then
       pass "$sub code hash matches song-wallet"
+    elif [ "$code_hash" = "11111111111111111111111111111111" ]; then
+      fail "$sub has no code"
+    else
+      fail "$sub code hash ${global_hash:-$code_hash} != collection $config_hash"
     fi
 
     status=0
