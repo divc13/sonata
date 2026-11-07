@@ -16,12 +16,16 @@ import { waitFor } from "./wait-for";
 
 let audioPosition = 0;
 const toggles: string[] = [];
+const pauses: string[] = [];
 const seeks: number[] = [];
 const toasts: string[] = [];
 
 const audio = {
   load() {},
   isPlaying: true,
+  pause() {
+    pauses.push("pause");
+  },
   togglePlayPause() {
     toggles.push("toggle");
   },
@@ -175,6 +179,7 @@ const roots: Root[] = [];
 async function mount(queue: Queue[], favorites?: Favorite) {
   audioPosition = 0;
   toggles.length = 0;
+  pauses.length = 0;
   seeks.length = 0;
   toasts.length = 0;
   passQueries = 0;
@@ -218,7 +223,7 @@ describe("sonata preview in the player", () => {
     await waitFor(() => passQueries > 0);
 
     audioPosition = 35;
-    await waitFor(() => toggles.length === 1, 2000);
+    await waitFor(() => pauses.length === 1, 2000);
 
     expect(seeks).toContain(30);
     expect(toasts).toEqual(["Preview ended"]);
@@ -229,7 +234,7 @@ describe("sonata preview in the player", () => {
 
     // The interval keeps sampling, but neither the pause nor the toast repeats.
     await sleep(700);
-    expect(toggles).toHaveLength(1);
+    expect(pauses).toHaveLength(1);
     expect(toasts).toHaveLength(1);
   });
 
@@ -241,7 +246,7 @@ describe("sonata preview in the player", () => {
     audioPosition = 120;
     await sleep(700);
 
-    expect(toggles).toEqual([]);
+    expect(pauses).toEqual([]);
     expect(previewPrompt()).toBeNull();
     expect(toasts).toEqual([]);
   });
@@ -254,7 +259,7 @@ describe("sonata preview in the player", () => {
     await sleep(400);
 
     expect(passQueries).toBe(0);
-    expect(toggles).toEqual([]);
+    expect(pauses).toEqual([]);
     expect(previewPrompt()).toBeNull();
   });
 
@@ -264,7 +269,7 @@ describe("sonata preview in the player", () => {
     await waitFor(() => passQueries > 0);
 
     audioPosition = 35;
-    await waitFor(() => toggles.length === 1, 2000);
+    await waitFor(() => pauses.length === 1, 2000);
     expect(previewPrompt()).not.toBeNull();
 
     // Another master gets its own free window and its own prompt state.
@@ -273,7 +278,7 @@ describe("sonata preview in the player", () => {
     expect(previewPrompt()).toBeNull();
 
     audioPosition = 35;
-    await waitFor(() => toggles.length === 2, 2000);
+    await waitFor(() => pauses.length === 2, 2000);
     expect(toasts).toEqual(["Preview ended", "Preview ended"]);
   });
 });
