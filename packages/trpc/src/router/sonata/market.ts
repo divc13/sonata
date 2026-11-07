@@ -1,10 +1,17 @@
 import { sonataListing, sonataSong } from "@infinitunes/db/schema";
+import { DEMO_ROLES, type ChainResult } from "@infinitunes/near";
 import type { SonataListingWithSong } from "@infinitunes/types";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { publicProcedure, router } from "../../trpc";
+import {
+  assertSonataDemoMode,
+  rethrowSonataError,
+  sonataChainFor,
+} from "./demo";
 import { withEarnings } from "./helpers";
+import { microUsdcInput, tokenIdInput } from "./inputs";
 import { LISTING_SORTS, sortListings } from "./market-helpers";
 
 const listingInput = z.object({
@@ -62,5 +69,57 @@ export const sonataMarketRouter = router({
 
       const [song] = await withEarnings(ctx.db, [row.song]);
       return { ...row.listing, song };
+    }),
+
+  /**
+   * Demo-only resale purchase. `expectedPriceUsdc` is sent as the transfer
+   * amount; the market refunds a mismatch instead of accepting it, so the UI
+   * should pass the price it displayed.
+   */
+  buy: publicProcedure
+    .input(
+      z.object({
+        role: z.enum(DEMO_ROLES),
+        tokenId: tokenIdInput,
+        expectedPriceUsdc: microUsdcInput,
+      }),
+    )
+    .output(z.custom<ChainResult>())
+    .mutation(async ({ input, ctx }) => {
+      assertSonataDemoMode();
+
+      try {
+        return await sonataChainFor(ctx).buyMaster(
+          input.role,
+          input.tokenId,
+          input.expectedPriceUsdc,
+        );
+      } catch (error) {
+        rethrowSonataError(error);
+      }
+    }),
+
+  /** Demo-only: approve the market, then create a fixed-price listing. */
+  list: publicProcedure
+    .input(
+      z.object({
+        role: z.enum(DEMO_ROLES),
+        tokenId: tokenIdInput,
+        priceUsdc: microUsdcInput,
+      }),
+    )
+    .output(z.custom<ChainResult>())
+    .mutation(async ({ input, ctx }) => {
+      assertSonataDemoMode();
+
+      try {
+        return await sonataChainFor(ctx).listMaster(
+          input.role,
+          input.tokenId,
+          input.priceUsdc,
+        );
+      } catch (error) {
+        rethrowSonataError(error);
+      }
     }),
 });

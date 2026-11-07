@@ -19,6 +19,7 @@
     "@infinitunes/auth": "workspace:*",
     "@infinitunes/db": "workspace:*",
     "@infinitunes/env": "workspace:*",
+    "@infinitunes/near": "workspace:*",
     "@infinitunes/trpc": "workspace:*",
     "@infinitunes/types": "workspace:*",
     "@infinitunes/ui": "workspace:*",

@@ -1,6 +1,6 @@
 import { authEnv } from "@infinitunes/auth/env";
 import { dbEnv } from "@infinitunes/db/env";
-import { clientSchema } from "@infinitunes/env/schema";
+import { clientSchema, serverSchema } from "@infinitunes/env/schema";
 import { trpcEnv } from "@infinitunes/trpc/env";
 import { createEnv } from "@t3-oss/env-nextjs";
 import { z } from "zod";
@@ -16,6 +16,7 @@ export const env = createEnv({
     TRUSTED_PROXY: z.enum(["vercel", "true", "false"]).optional(),
     RATE_LIMITING_REQUESTS_PER_SECOND: z.coerce.number().default(50),
     UMAMI_WEBSITE_ID: z.string().optional(),
+    ...serverSchema,
   },
   client: clientSchema,
   createFinalSchema: (shape) =>
