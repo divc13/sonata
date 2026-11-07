@@ -2,120 +2,286 @@
 
 **Every song is an account.**
 
-Sonata is a subscription music platform where every master recording is a 1-of-1 NFT that owns its
-own keyless NEAR account. Listeners pay once per month for the whole catalog. Artists are paid a
-fixed dollar rate for every verified listening hour, directly into the song's account. The master can
-be sold, and its account, balance, and future income go with it.
+Sonata is a subscription music player where every master recording is a 1-of-1
+NFT that owns its own keyless NEAR account. Listeners pay once for the whole
+catalogue. Each verified listening hour pays the song's account a fixed dollar
+rate. Sell the master and its account, balance and future income go with it.
 
-> **Status:** NEAR Hackathon 2026 `nfts` build in progress. The spec pack is complete and the
-> Infinitunes shell is imported. Contracts, Sonata data, and the new UI are being built against
-> `specs/`. This README will be updated with the live demo, contract addresses, and video before the
-> submission deadline (2026-11-14 23:59 UTC).
+> **Status:** NEAR Hackathon 2026 `nfts` submission. The contracts, 12 masters
+> and five resale listings are deployed on NEAR testnet, and the listener pass
+> is active. The player, pass, artist dashboard, market and audit pages work
+> against seeded Postgres history. Read
+> [Known limitations](#known-limitations) and
+> [`docs/DEMO.md`](docs/DEMO.md) before judging the live money flow.
 
-## The model
+## The problem
 
-| Piece            | How it works                                                                               |
-| ---------------- | ------------------------------------------------------------------------------------------ |
-| **Master**       | One song, one 1-of-1 NFT. No fractions, no editions.                                       |
-| **Song account** | Each master owns `<slug>.masters-sonata.testnet`, a NEAR account with no keys.             |
-| **Pass**         | $5 for 30 days of unlimited listening. A non-transferable NFT.                             |
-| **Earnings**     | $0.03 per verified listening hour, paid in USDC directly to the song account.              |
-| **Cap**          | 4 verified hours per listener per day. Self-listens do not earn.                           |
-| **Reserve**      | The platform holds a 3-month reserve and cannot withdraw below it.                         |
-| **Resale**       | Fixed price. 5% to the creator, the rest to the seller. The account moves with the master. |
+Streaming pays artists a fraction of a cent per stream, pooled and opaque.
+Artists cannot see what a listener is worth, cannot sell a recording with its
+income history, and cannot hold the asset that actually earns. Listeners rent
+access forever and own nothing. The money layer is hidden behind labels and
+collection societies.
 
-The key property: the song account has no access keys. It can only pay the current owner of the
-master, checked on chain at withdrawal time. A seller cannot keep the income after a sale.
+Sonata makes the master itself the operating asset: a real account with a real
+balance, owned by the NFT, earning from a subscription pool, and transferable
+with the recording.
 
-## Demo parameters
+## How it works
 
-| Parameter  | Value                                                           |
-| ---------- | --------------------------------------------------------------- |
-| Pass       | $5.00 / 30 days                                                 |
-| Rate `R`   | $0.03 per verified hour                                         |
-| Daily cap  | 4 hours                                                         |
-| Reserve    | 3 months target, pro-rata below 1 month                         |
-| Royalty    | 5% to the creator                                               |
-| Settlement | USDC on NEAR testnet, weekly in production, manual for the demo |
+| Piece | How it works |
+| --- | --- |
+| **Master** | One song, one 1-of-1 NFT. No fractions, no editions. |
+| **Song account** | Each master owns `<slug>.masters-sonata.testnet`, a NEAR account with **zero access keys**. |
+| **Pass** | $5.00 for 30 days of full playback. A non-transferable NFT. The free tier is a 30-second preview. |
+| **Earnings** | $0.03 per verified listening hour, paid in mock USDC directly to the song account. |
+| **Cap** | 4 verified hours per listener per day, across all songs. Owner and creator listens do not earn. |
+| **Withdrawal** | Only the current master owner can withdraw. The check is on chain at withdrawal time. |
+| **Resale** | Fixed price. 5% to the creator, the rest to the seller. The account and its balance move with the master. |
+| **Reserve** | 3-month target, 1-month hard floor. The platform cannot withdraw below it. |
 
-## Read the specs
-
-The build is spec-driven. Start here:
-
-- [`specs/00-product.md`](specs/00-product.md): product, users, non-goals, pitch.
-- [`specs/01-architecture.md`](specs/01-architecture.md): system shape, data flow, repo layout.
-- [`specs/02-contracts.md`](specs/02-contracts.md): exact contract interfaces, events, errors.
-- [`specs/03-accounting.md`](specs/03-accounting.md): payout math, reserve, worked examples.
-- [`specs/04-threat-model.md`](specs/04-threat-model.md): what can go wrong and what stops it.
-- [`specs/05-design.md`](specs/05-design.md): brand, screens, copy, and UI rules.
-- [`specs/06-demo.md`](specs/06-demo.md): seed data and the 3-minute demo script.
-- [`specs/07-tasks.md`](specs/07-tasks.md): workstreams and acceptance criteria.
-- [`specs/decisions.md`](specs/decisions.md): the decision log.
+The key property: the song account has no keys. It can only pay the current
+owner of the master, checked on chain at withdrawal time. A seller cannot keep
+the income after a sale.
 
 ## Architecture at a glance
 
 ```
-Browser (Next.js player) ── tRPC ── Postgres (catalog, listens, earnings)
-        │
-        └── NEAR RPC ── masters-sonata.testnet   (NEP-171 + song account creation)
-                        platform-sonata.testnet  (pass NFT, treasury, settlement)
-                        market-sonata.testnet    (fixed-price resale)
-                        usdc-sonata.testnet      (mock NEP-141, 6 decimals)
-                        <slug>.masters...        (keyless song accounts)
+Browser (Next.js 16 player)
+  │  tRPC
+  ▼
+apps/web ───────────────────────────────┐
+  │  Drizzle                           │  server-side demo signers
+  ▼                                    ▼
+Postgres (catalogue, listens,        NEAR testnet
+  epochs, payouts, pass cache)         ├─ masters-sonata.testnet
+                                       ├─ platform-sonata.testnet
+                                       ├─ market-sonata.testnet
+                                       ├─ usdc-sonata.testnet
+                                       └─ <slug>.masters-sonata.testnet
+Listener heartbeats ──► settlement script / oracle ──► platform.settle_epoch
 ```
 
-A settlement service aggregates verified listening seconds, publishes an audit bundle, and submits
-`platform.settle_epoch` as the oracle. An indexer writes contract events into Postgres for history
-views.
+- **Contracts** (`contracts/`): `master-nft` (NEP-171 + song-account factory),
+  `song-wallet` (immutable keyless account), `platform` (pass, treasury,
+  settlement, reserve), `market` (fixed-price resale + 5% royalty),
+  `mock-usdc` (NEP-141, 6 decimals).
+- **App** (`apps/web`, `packages/`): the player, pass checkout, artist
+  dashboard, market, audit page and the typed `sonata` tRPC router.
+- **Oracle / settlement** (`scripts/settle-demo.ts`,
+  `apps/web/lib/sonata/settlement-core.ts`): aggregates verified listening,
+  computes a listen root, and submits `platform.settle_epoch` with the oracle
+  key.
 
-## Local development
+The full money flow, the master-plus-wallet ownership model and the trust
+boundaries are in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
-Prerequisites: [Bun](https://bun.sh) 1.4.4, Docker, and Rust with the `wasm32-unknown-unknown` target
-for contracts.
+## Live on NEAR testnet
+
+| Role | Account |
+| --- | --- |
+| Parent / faucet / contract owner | `sonata.testnet` |
+| Master NFT collection | `masters-sonata.testnet` |
+| Platform / settlement | `platform-sonata.testnet` |
+| Market | `market-sonata.testnet` |
+| Mock USDC (NEP-141) | `usdc-sonata.testnet` |
+| Listen oracle | `oracle-sonata.testnet` |
+| Artist, Nadia Vale | `nadia-sonata.testnet` |
+| Artist, Kofi Mensah | `kofi-sonata.testnet` |
+| Artist, Lena Ortiz | `lena-sonata.testnet` |
+| Listener | `listener.sonata.testnet` |
+| Collector | `collector.sonata.testnet` |
+
+Song accounts are `<token-id>.masters-sonata.testnet`, for example
+`midnight-drive.masters-sonata.testnet`. Each one has zero access keys and the
+global `song-wallet` code hash
+`2iaWAuzRDNsNn65eVCh8qwNboRdrrFVgtGv7o4EmCMuS`.
+
+Key facts: **12 masters**, **5 active listings**, **$0.03 per verified hour**,
+**4 hours/day cap**, **5% creator royalty**, **30-day pass for $5**.
+
+Deployment transactions, code hashes and the exact account balances are in
+[`ops/testnet.md`](ops/testnet.md). The read-only chain check is:
+
+```bash
+./scripts/check-demo.sh
+```
+
+It exits 0 only when the 12 masters, five listings, listener pass and keyless
+song accounts match. It needs no keychain and no write access.
+
+## Demo
+
+- **3-minute script:** [`docs/DEMO.md`](docs/DEMO.md) — timed routes, clicks,
+  voiceover, terminal proofs and the seeded/live split.
+- **Repository:** <https://github.com/divc13/sonata> (public at submission).
+- **Demo video:** `<demo-video-url>` (to be published with the submission).
+- **Live app:** `<demo-app-url>` (or run it locally with the quickstart below).
+
+The demo is a hybrid, and the documentation says so:
+
+- **Live on testnet:** the contracts, 12 mints, five listings, the listener's
+  pass purchase, and every keyless song account.
+- **Seeded in Postgres:** the eight past epochs, per-song payouts, trailing
+  30-day earnings, the pass row shown in the UI, and the ownership/listing rows
+  on the catalogue pages.
+- **Demo-gated live writes:** pass purchase, master purchase, listing,
+  withdrawal and settlement are real transactions when
+  `SONATA_DEMO_MODE=true` and the server-side keys are set. They are **not
+  reindexed back into Postgres** in this build; see
+  [Known limitations](#known-limitations).
+
+A judge can verify the chain half without any of the app's seed data:
+
+```bash
+./scripts/check-demo.sh
+```
+
+## Quickstart
+
+Prerequisites: [Bun](https://bun.sh) 1.4.4, Docker, and Rust with the
+`wasm32-unknown-unknown` target for contracts.
 
 ```bash
 bun install
-cp .env.example .env
+cp .env.example .env.local
+
+# Local Postgres from docker-compose.yml:
+# DATABASE_URL=postgres://postgres:postgrespassword@127.0.0.1:5432/local_platforms
+# AUTH_SECRET=<at least 32 characters>
+
 bun run db:up
 bun run db:migrate
 bun run db:seed
 bun run dev
 ```
 
-Open http://localhost:3000. Local credentials: `local@example.test` / `LocalDev123!`.
+Open <http://localhost:3000>. Local credentials: `local@example.test` /
+`LocalDev123!`.
 
-The upstream app expects `JIOSAAVN_DES_KEY` until the catalog replacement lands. Set a dummy value
-locally if you only need the shell to boot. The Sonata catalog does not use JioSaavn.
+The seeded catalogue and history render without any NEAR keys. For the
+demo-gated writes, set `SONATA_DEMO_MODE=true` and the four
+`SONATA_*_SECRET_KEY` variables from `.env.example` on the server. Never commit
+them. If you only need source compilation, `SKIP_ENV_VALIDATION=true` skips the
+env schema.
 
-### Useful scripts
+To deploy and verify the contracts:
 
 ```bash
-bun run db:up        # PostgreSQL, Redis, adapter
-bun run db:migrate   # Apply migrations
-bun run db:seed      # Seed deterministic local data
-bun run dev          # Next.js dev server
-bun run type-check   # TypeScript
-bun run lint         # Oxlint
-bun run test         # Plain, mocked, and DOM suites
-bun run build        # Production build
+cargo build --manifest-path contracts/Cargo.toml --workspace \
+  --target wasm32-unknown-unknown --release
+scripts/deploy-testnet.sh
+scripts/deploy-platform-market.sh
+scripts/mint-demo.sh
+scripts/check-demo.sh
+```
+
+The scripts are idempotent: existing code is verified, not redeployed, and
+existing masters, listings and passes are skipped. They need macOS keychain
+signing and a TTY; see [`ops/testnet.md`](ops/testnet.md) for the exact CLI
+quirks.
+
+## Tests and quality gates
+
+Run from the repository root:
+
+```bash
+bun run fmt:check      # formatting
+bun run lint           # Oxlint
+bun run type-check     # TypeScript
+bun run test           # plain, mocked and DOM suites
+bun run build          # production build
+```
+
+Contracts:
+
+```bash
+cargo test --manifest-path contracts/Cargo.toml --workspace
+cargo fmt --manifest-path contracts/Cargo.toml --all -- --check
+```
+
+Chain demo:
+
+```bash
+./scripts/check-demo.sh
+```
+
+Settlement (see the precondition in [`docs/DEMO.md`](docs/DEMO.md)):
+
+```bash
+bun run scripts/settle-demo.ts <epoch>
 ```
 
 ## Repository layout
 
 ```
-apps/web/           Next.js player and Sonata UI
-packages/           auth, db, env, trpc, types, ui, near (new)
+apps/web/           Next.js player, pass, dashboard, market, audit
+packages/           auth, db, env, near, trpc, types, ui
 contracts/          master-nft, song-wallet, platform, market, mock-usdc
-services/           settlement oracle and event indexer (new)
+scripts/            deploy, mint/list, check, settle
+ops/                testnet identifiers and deployment record
 specs/              normative spec pack
-docs/               design system and upstream documentation
+docs/               architecture, demo, submission, design system
 ```
+
+There is no `services/` directory in this build; the settlement orchestration
+lives in `apps/web/lib/sonata` and is invoked by `scripts/settle-demo.ts`.
+
+## Read the specs
+
+The build is spec-driven. The contracts, events, errors and money formulas in
+`specs/02-contracts.md` and `specs/03-accounting.md` are frozen interfaces.
+
+- [`specs/00-product.md`](specs/00-product.md) — product, users, non-goals.
+- [`specs/01-architecture.md`](specs/01-architecture.md) — system shape.
+- [`specs/02-contracts.md`](specs/02-contracts.md) — method names, events, errors.
+- [`specs/03-accounting.md`](specs/03-accounting.md) — payout math and worked examples.
+- [`specs/04-threat-model.md`](specs/04-threat-model.md) — what can go wrong.
+- [`specs/05-design.md`](specs/05-design.md) — brand, screens, copy, UI rules.
+- [`specs/06-demo.md`](specs/06-demo.md) — seed data and the demo narrative.
+- [`specs/07-tasks.md`](specs/07-tasks.md) — workstreams and acceptance criteria.
+- [`specs/decisions.md`](specs/decisions.md) — the decision log.
+
+## Known limitations
+
+These are the honest boundaries of the hackathon build. Details and evidence
+are in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#what-is-not-in-this-build)
+and [`docs/SUBMISSION.md`](docs/SUBMISSION.md#known-limitations).
+
+- **Testnet only, mock USDC.** No real funds, no mainnet, no fiat on-ramp.
+- **No event indexer.** Successful chain writes are not mirrored into
+  Postgres, so the UI keeps the seeded owner, listing and pass rows until an
+  indexer lands. The chain is authoritative.
+- **Seeded earnings history.** The eight epochs, payouts, charts and the pass
+  receipt are seeded. The contracts and the 12 masters, five listings and pass
+  purchase are live testnet state.
+- **Epoch-id mismatch.** As of 2026-11-08 the chain has settled no epochs
+  (`next_epoch_id = 1`) while Postgres seeds epochs 1–8. A live settlement
+  needs a fresh chain and database, or a deliberate reset. `docs/DEMO.md`
+  explains the exact command and precondition.
+- **Demo signers, not a browser wallet.** `SONATA_DEMO_MODE=true` lets the
+  server sign as the seeded listener, collector, nadia or oracle. There is no
+  wallet-selector connection in the browser.
+- **Publish is a UI stub.** The 12 masters were minted by
+  `scripts/mint-demo.sh`; the dashboard's "Publish a master" button has no
+  wizard yet.
+- **Some controls are presentational.** The market sort/filter pills and the
+  dashboard range pills change state only.
+- **Rejected withdrawals are logged, not thrown.** The song wallet logs
+  `Withdraw rejected: …` and the transaction succeeds; the UI does not parse
+  the log. The demo proves the old-owner block with the log and the unchanged
+  balance, not the toast.
+- **The audit page is a ledger view.** It shows the epoch table and payouts; the
+  listen root is a short hash with the full value on hover. There is no
+  published bundle file or reserve bar in this build; reserve values are on
+  chain.
+- **Not audited.** This is a hackathon build, not production-audited code.
 
 ## Built on Infinitunes
 
-Sonata reuses the Infinitunes music player (MIT) by Hemant Rajput for its shell, design system, auth,
-and data tooling. The catalog, podcasts, radio, shows, mixes, and AI assistant are replaced. See
-[`NOTICE`](NOTICE) and [`LICENSE`](LICENSE).
+Sonata reuses the Infinitunes music player (MIT) by Hemant Rajput for its shell,
+design system, auth, and data tooling. The catalogue, podcasts, radio, shows,
+mixes and AI assistant are replaced. See [`NOTICE`](NOTICE) and
+[`LICENSE`](LICENSE).
 
 ## License
 
