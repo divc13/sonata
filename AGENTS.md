@@ -2,6 +2,20 @@
 
 This file is the project's committed home for project-intrinsic agent knowledge: build, test, release, architecture, and sharp-edge notes that should travel with the code.
 
+## Sonata hackathon spec pack (read first)
+
+This repository is being adapted into **Sonata**, a NEAR Hackathon 2026 `nfts` submission. The
+product, architecture, contract interfaces, accounting, threat model, design, demo, and task
+breakdown are normative and live in `specs/`. Read `specs/README.md` and the spec for your
+workstream before writing code.
+
+- Do not infer Sonata behavior from the upstream Infinitunes catalog. Podcasts, radio, shows, mixes,
+  and the AI assistant are out of scope.
+- Contract method names, events, errors, and money formulas in `specs/02-contracts.md` and
+  `specs/03-accounting.md` are frozen interfaces. Change the spec first.
+- `packages/ui` and `docs/design-system/**` remain frozen under the existing design-system contract.
+- Upstream attribution is in `NOTICE`; keep `LICENSE` intact.
+
 - Add durable project-specific notes here as they are discovered through real work.
 
 ## Monorepo layout

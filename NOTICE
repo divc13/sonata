@@ -1,0 +1,32 @@
+# NOTICE
+
+Sonata is built on the Infinitunes music player by Hemant Rajput.
+
+- Infinitunes: https://github.com/rajput-hemant/infinitunes
+- Copyright (c) 2023 Hemant Rajput
+- License: MIT (see `LICENSE`)
+
+The app shell, design system, player patterns, authentication scaffolding, database tooling, and
+parts of the documentation are derived from Infinitunes. Sonata replaces the upstream catalog,
+podcasts, radio, shows, mixes, and AI assistant with a subscription player where each master is a
+1-of-1 NFT that owns a keyless NEAR account.
+
+## Third-party software
+
+This project uses open-source packages listed in `package.json`, `bun.lock`, and
+`contracts/**/Cargo.toml`. Their licenses are governed by their respective projects. Run
+`bun pm licenses` or inspect each package for details.
+
+## Fonts and assets
+
+- The heading and body fonts are loaded through the existing Infinitunes setup. Their licenses are
+  governed by their font projects.
+- Demo covers and audio committed under `apps/web/public/demo/` are original or CC0. Do not add
+  copyrighted music to the repository.
+- The Sonata wordmark and brand assets are original to this project.
+
+## Testnet and mock assets
+
+Sonata runs on NEAR testnet for the hackathon. The USDC contract is a mock NEP-141 token with no
+real-world value and must never be deployed to mainnet. Nothing in this repository is financial
+advice, a security, or an offer of real-world rights.
