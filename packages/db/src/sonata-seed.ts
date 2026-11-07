@@ -35,7 +35,7 @@ export const DEMO_ARTISTS: DemoArtist[] = [
   { accountId: "lena-sonata.testnet", name: "Lena Ortiz", handle: "lena" },
 ];
 
-type DemoSong = {
+export type DemoSong = {
   tokenId: string;
   title: string;
   artist: number;
@@ -45,7 +45,7 @@ type DemoSong = {
 };
 
 /* One row per masters table in specs/06-demo.md, in listing order. */
-const DEMO_SONGS: DemoSong[] = [
+export const DEMO_SONGS: DemoSong[] = [
   {
     tokenId: "midnight-drive",
     title: "Midnight Drive",
@@ -157,6 +157,16 @@ const DEMO_EPOCHS: { daysAgo: number; totalHours: number }[] = [
   { daysAgo: 14, totalHours: 742 },
   { daysAgo: 7, totalHours: 811 },
 ];
+
+/* Active resale listings in specs/06-demo.md. The chain mint script reads the
+ * same five entries from scripts/demo-catalogue.json. */
+export const DEMO_LISTINGS = [
+  { tokenId: "midnight-drive", priceUsdc: "50000000" },
+  { tokenId: "velvet-static", priceUsdc: "35000000" },
+  { tokenId: "harbor-lights", priceUsdc: "80000000" },
+  { tokenId: "after-rain", priceUsdc: "20000000" },
+  { tokenId: "signal-fire", priceUsdc: "65000000" },
+] as const;
 
 /** Derives a stable fake tx-like hash for seeded demo events. */
 function demoHash(seed: string) {
@@ -325,14 +335,6 @@ export async function seedSonata(db: DbClient) {
   /* --------------------------------------------------------------------- */
   /* 4. Active resale listings (specs/06-demo.md masters table)             */
   /* --------------------------------------------------------------------- */
-
-  const DEMO_LISTINGS = [
-    { tokenId: "midnight-drive", priceUsdc: "50000000" },
-    { tokenId: "velvet-static", priceUsdc: "35000000" },
-    { tokenId: "harbor-lights", priceUsdc: "80000000" },
-    { tokenId: "after-rain", priceUsdc: "20000000" },
-    { tokenId: "signal-fire", priceUsdc: "65000000" },
-  ];
 
   for (const listing of DEMO_LISTINGS) {
     const song = DEMO_SONGS.find((entry) => entry.tokenId === listing.tokenId);
