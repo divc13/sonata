@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { sql } from "drizzle-orm";
+import { inArray, sql } from "drizzle-orm";
 
 import type { DbClient } from "./client";
 import {
@@ -19,6 +19,12 @@ import {
  * `onConflictDoNothing`; grouped inserts (epochs/payouts, ownership) are
  * skipped when that group already exists, so re-seeding never duplicates
  * chain-written history and never rewinds an indexer-updated owner.
+ *
+ * Seeded settlement history uses negative epoch ids (`-1` … `-8`), because the
+ * platform contract counts real epochs from `0`: a demo row must never occupy
+ * a chain id the oracle is about to settle. Older seeds wrote ids `1` … `8`;
+ * those rows are recognised by their deterministic demo tx hash and replaced
+ * once, leaving any indexer-written epoch untouched.
  *
  * Amounts are micro-USDC (6 decimals) as text. `total_paid` and payout
  * amounts derive from the fixed rate R = 30_000 ($0.03) per verified hour
@@ -248,14 +254,39 @@ export async function seedSonata(db: DbClient) {
   /* 2. Eight past epochs, their payouts, and one mint per ownership history */
   /* --------------------------------------------------------------------- */
 
-  const [epochCount] = await db
-    .select({ n: sql<number>`count(*)::int` })
+  const desiredEpochIds = DEMO_EPOCHS.map((_, index) => -(index + 1));
+  const epochRows = await db
+    .select({ id: sonataEpoch.id, txHash: sonataEpoch.txHash })
     .from(sonataEpoch);
 
-  if (epochCount.n === 0) {
+  /* The seed owns a row only when it is negative or still carries the demo tx
+   * hash it wrote; a chain epoch that happens to share an old id is preserved. */
+  const seededEpochIds = epochRows
+    .filter(
+      (epoch) =>
+        epoch.id < 0 ||
+        epoch.txHash === demoHash(`sonata:demo:epoch:${epoch.id}`),
+    )
+    .map((epoch) => epoch.id);
+  const hasLegacyEpochIds = seededEpochIds.some((id) => id >= 0);
+  const hasEveryEpochId = desiredEpochIds.every((id) =>
+    epochRows.some((epoch) => epoch.id === id),
+  );
+
+  if (hasLegacyEpochIds || !hasEveryEpochId) {
+    /* Clear only the seeded history, never a chain settlement. */
+    if (seededEpochIds.length > 0) {
+      await db
+        .delete(sonataPayout)
+        .where(inArray(sonataPayout.epochId, seededEpochIds));
+      await db
+        .delete(sonataEpoch)
+        .where(inArray(sonataEpoch.id, seededEpochIds));
+    }
+
     for (let i = 0; i < DEMO_EPOCHS.length; i += 1) {
       const demo = DEMO_EPOCHS[i];
-      const id = i + 1;
+      const id = desiredEpochIds[i];
       const slots = epochSlots(demo.totalHours * 3600, i);
 
       await db.insert(sonataEpoch).values({

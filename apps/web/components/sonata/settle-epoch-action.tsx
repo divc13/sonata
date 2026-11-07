@@ -8,7 +8,7 @@ import { trpc } from "~/lib/trpc/vanilla";
 import { userMessage } from "~/lib/user-message";
 
 type SettleEpochActionProps = {
-  /** `max(epoch.id) + 1`, or 0 when nothing has settled yet. */
+  /** `max(chain epoch id) + 1`, or 0 when nothing has settled yet. */
   nextEpochId: number;
 };
 

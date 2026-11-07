@@ -4,9 +4,12 @@ import type { SonataPayoutRow } from "@infinitunes/types";
 
 import {
   earningsByEpoch,
+  epochAxisLabel,
+  formatEpochLabel,
   formatListenHours,
   formatMicroUsd,
   formatRatePerHour,
+  isDemoEpochId,
   nextEpochId,
   payoutsToReceipts,
   sumMicro,
@@ -55,13 +58,35 @@ describe("next epoch calculation", () => {
     expect(nextEpochId([])).toBe(0);
   });
 
-  it("continues at max(id) + 1, not the array length", () => {
+  it("ignores seeded demo history with negative ids", () => {
+    expect(nextEpochId([{ id: -1 }, { id: -8 }, { id: -3 }])).toBe(0);
+    expect(nextEpochId([{ id: -8 }, { id: 0 }])).toBe(1);
+  });
+
+  it("continues at max(chain id) + 1, not the array length", () => {
     expect(nextEpochId([{ id: 1 }, { id: 8 }, { id: 3 }])).toBe(9);
     expect(nextEpochId([{ id: 8 }])).toBe(9);
+    expect(nextEpochId([{ id: -1 }, { id: 4 }, { id: -2 }])).toBe(5);
   });
 
   it("keeps the chain id when the first id is zero", () => {
     expect(nextEpochId([{ id: 0 }])).toBe(1);
+  });
+});
+
+describe("epoch labels", () => {
+  it("separates seeded demo history from chain epochs", () => {
+    expect(isDemoEpochId(-1)).toBe(true);
+    expect(isDemoEpochId(0)).toBe(false);
+    expect(formatEpochLabel(-1)).toBe("Demo 1");
+    expect(formatEpochLabel(-8)).toBe("Demo 8");
+    expect(formatEpochLabel(0)).toBe("Epoch 0");
+    expect(formatEpochLabel(12)).toBe("Epoch 12");
+  });
+
+  it("keeps chart labels compact", () => {
+    expect(epochAxisLabel(-3)).toBe("D3");
+    expect(epochAxisLabel(0)).toBe("E0");
   });
 });
 

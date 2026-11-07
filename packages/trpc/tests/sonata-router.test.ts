@@ -29,7 +29,7 @@ describe.skipIf(!runDb)("sonata router (seeded local database)", () => {
     for (const song of songs) {
       expect(song.earnings30dUsdc).toMatch(/^\d+$/);
     }
-    /* Epochs 5–8 pay songs inside the trailing 30-day window. */
+    /* Demo epochs 5–8 pay songs inside the trailing 30-day window. */
     expect(songs.some((song) => song.earnings30dUsdc !== "0")).toBe(true);
 
     const midnight = songs.find((song) => song.tokenId === "midnight-drive")!;
@@ -121,10 +121,13 @@ describe.skipIf(!runDb)("sonata router (seeded local database)", () => {
   it("returns the eight seeded epochs and an epoch detail with payouts", async () => {
     const epochs = await c().sonata.epochs.list({});
     expect(epochs).toHaveLength(8);
-    expect(epochs[0].id).toBe(8);
+    /* Seeded demo history uses negative ids, newest settlement first. */
+    expect(epochs.map((epoch) => epoch.id)).toEqual([
+      -8, -7, -6, -5, -4, -3, -2, -1,
+    ]);
     expect(Number(epochs[0].totalSeconds)).toBeGreaterThan(0);
 
-    const detail = await c().sonata.epochs.byId({ id: 8 });
+    const detail = await c().sonata.epochs.byId({ id: -8 });
     expect(detail.payouts).toHaveLength(6);
     expect(detail.effectiveRatePerHour).toBe("30000");
 
@@ -133,8 +136,17 @@ describe.skipIf(!runDb)("sonata router (seeded local database)", () => {
     });
   });
 
+  it("keeps the seeded demo history off the chain id space", async () => {
+    const epochs = await c().sonata.epochs.list({});
+    for (const epoch of epochs) {
+      expect(epoch.id).toBeLessThan(0);
+    }
+    /* No chain epoch has settled, so the oracle's next id is 0. */
+    expect(Math.max(...epochs.map((epoch) => epoch.id))).toBeLessThan(0);
+  });
+
   it("sums the epoch payouts into the epoch total exactly", async () => {
-    const detail = await c().sonata.epochs.byId({ id: 7 });
+    const detail = await c().sonata.epochs.byId({ id: -7 });
     const sum = detail.payouts.reduce(
       (total, payout) => total + Number(payout.amountUsdc),
       0,

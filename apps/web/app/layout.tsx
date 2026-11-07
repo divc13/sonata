@@ -7,7 +7,6 @@ import type React from "react";
 import { GlassFilters } from "~/components/glass/glass-filters";
 import { GlassRuntime } from "~/components/glass/glass-runtime";
 import Providers from "~/components/provider";
-import { TailwindIndicator } from "~/components/tailwind-indicator";
 import { siteConfig } from "~/config/site";
 import { env } from "~/lib/env";
 import * as fonts from "~/lib/fonts";
@@ -45,8 +44,6 @@ export default function RootLayout({ modal, children }: RootLayoutProps) {
           {children}
           {modal}
         </Providers>
-
-        <TailwindIndicator />
 
         {env.UMAMI_WEBSITE_ID ? (
           <Script

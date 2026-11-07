@@ -8,6 +8,7 @@ import { SettleEpochAction } from "~/components/sonata/settle-epoch-action";
 import { pageMetadata } from "~/lib/metadata";
 import {
   formatEpochDate,
+  formatEpochLabel,
   formatEpochRange,
   formatListenHours,
   formatMicroUsd,
@@ -17,6 +18,7 @@ import {
   shortHash,
   sumMicro,
 } from "~/lib/sonata-display";
+import { formatUsdMicro2 } from "~/lib/sonata/market";
 import { api } from "~/lib/trpc/server";
 import { cn } from "~/lib/utils";
 
@@ -34,6 +36,8 @@ async function AuditContent() {
     api.sonata.songs.list({ limit: 100 }),
   ]);
 
+  /* `epochs.list` is newest settlement first, which is the chain's next-to-
+   * settle history; seeded demo epochs (negative ids) sit behind it. */
   const latest = epochs[0];
   const detail = latest
     ? await api.sonata.epochs.byId({ id: latest.id })
@@ -53,7 +57,7 @@ async function AuditContent() {
   const stats = [
     {
       label: "Total paid",
-      value: formatMicroUsd(overview.totalPaidUsdc),
+      value: formatUsdMicro2(overview.totalPaidUsdc),
       hint: "Across every settled epoch",
     },
     {
@@ -109,8 +113,8 @@ async function AuditContent() {
               Settled history
             </h2>
             <p className="text-sm leading-6 text-muted-foreground">
-              Seeded demo history, mirrored from contract settlements. This is a
-              record of what settled, not live chain state.
+              Seeded demo history, shown as Demo 1–Demo 8. Real contract
+              settlements begin at epoch 0 and are listed alongside it.
             </p>
           </div>
           <SettleEpochAction nextEpochId={nextId} />
@@ -152,8 +156,10 @@ async function AuditContent() {
                 {epochs.map((epoch) => (
                   <tr key={epoch.id}>
                     <th scope="row" className="px-4 py-3 text-left font-medium">
-                      <span className="tabular-nums">{epoch.id}</span>
-                      {epoch.id === nextId - 1 ? (
+                      <span className="tabular-nums">
+                        {formatEpochLabel(epoch.id)}
+                      </span>
+                      {epoch.id === latest?.id ? (
                         <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-[0.625rem] font-semibold tracking-wide text-primary uppercase">
                           Latest
                         </span>
@@ -169,7 +175,7 @@ async function AuditContent() {
                       {formatRatePerHour(epoch.effectiveRatePerHour)}
                     </td>
                     <td className="px-3 py-3 text-right font-medium tabular-nums">
-                      {formatMicroUsd(epoch.totalPaidUsdc)}
+                      {formatUsdMicro2(epoch.totalPaidUsdc)}
                     </td>
                     <td className="px-3 py-3">
                       <span
@@ -214,7 +220,7 @@ async function AuditContent() {
                     —
                   </td>
                   <td className="px-3 py-3 text-right font-medium text-foreground tabular-nums">
-                    {formatMicroUsd(totalPaid)}
+                    {formatUsdMicro2(totalPaid)}
                   </td>
                   <td colSpan={2} className="px-4 py-3 text-muted-foreground">
                     {latest
@@ -248,7 +254,7 @@ async function AuditContent() {
         </div>
         {detail ? (
           <Receipt
-            title={`Epoch ${detail.id}`}
+            title={formatEpochLabel(detail.id)}
             meta={`${detail.payouts.length} song accounts · ${formatListenHours(detail.totalSeconds)}`}
           >
             {payoutsToReceipts(detail.payouts, titles).map((receipt) => (
