@@ -1,0 +1,68 @@
+{
+  "collection": "masters-sonata.testnet",
+  "platformOwner": "sonata.testnet",
+  "songWalletCodeHash": "7a5e1ngxxtsn4Q9wavUzgTsiw2rveqvBRqFaX2uki4Gr",
+  "globalCode": true,
+  "wallets": [
+    {
+      "tokenId": "midnight-drive",
+      "wallet": "midnight-drive-v2.masters-sonata.testnet",
+      "previousWallet": "midnight-drive.masters-sonata.testnet"
+    },
+    {
+      "tokenId": "paper-moons",
+      "wallet": "paper-moons-v2.masters-sonata.testnet",
+      "previousWallet": "paper-moons.masters-sonata.testnet"
+    },
+    {
+      "tokenId": "velvet-static",
+      "wallet": "velvet-static-v2.masters-sonata.testnet",
+      "previousWallet": "velvet-static.masters-sonata.testnet"
+    },
+    {
+      "tokenId": "slow-arc",
+      "wallet": "slow-arc-v2.masters-sonata.testnet",
+      "previousWallet": "slow-arc.masters-sonata.testnet"
+    },
+    {
+      "tokenId": "harbor-lights",
+      "wallet": "harbor-lights-v2.masters-sonata.testnet",
+      "previousWallet": "harbor-lights.masters-sonata.testnet"
+    },
+    {
+      "tokenId": "glass-hours",
+      "wallet": "glass-hours-v2.masters-sonata.testnet",
+      "previousWallet": "glass-hours.masters-sonata.testnet"
+    },
+    {
+      "tokenId": "northbound",
+      "wallet": "northbound-v2.masters-sonata.testnet",
+      "previousWallet": "northbound.masters-sonata.testnet"
+    },
+    {
+      "tokenId": "after-rain",
+      "wallet": "after-rain-v2.masters-sonata.testnet",
+      "previousWallet": "after-rain.masters-sonata.testnet"
+    },
+    {
+      "tokenId": "copper-sky",
+      "wallet": "copper-sky-v2.masters-sonata.testnet",
+      "previousWallet": "copper-sky.masters-sonata.testnet"
+    },
+    {
+      "tokenId": "low-tide",
+      "wallet": "low-tide-v2.masters-sonata.testnet",
+      "previousWallet": "low-tide.masters-sonata.testnet"
+    },
+    {
+      "tokenId": "signal-fire",
+      "wallet": "signal-fire-v2.masters-sonata.testnet",
+      "previousWallet": "signal-fire.masters-sonata.testnet"
+    },
+    {
+      "tokenId": "quiet-machines",
+      "wallet": "quiet-machines-v2.masters-sonata.testnet",
+      "previousWallet": "quiet-machines.masters-sonata.testnet"
+    }
+  ]
+}
