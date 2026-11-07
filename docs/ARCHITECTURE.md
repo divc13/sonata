@@ -255,10 +255,12 @@ These are real limitations, not hidden behaviour:
 - **Seeded earnings history.** The eight epochs, payouts, trailing-30-day
   charts and the pass receipt are seeded. The contracts and the 12 masters, 5
   listings and pass purchase are real testnet state.
-- **Epoch-id mismatch.** As of 2026-11-08 the chain has settled no epochs
-  (`next_epoch_id = 1`) while Postgres seeds epochs 1–8. A live settlement needs
-  a fresh chain and a fresh database, or a deliberate reset of the seeded
-  epoch/payout rows.
+- **Epoch base and demo history.** Real epoch ids start at `1`: `platform.new`
+  initializes `next_epoch_id = 1` and there is no epoch 0. As of 2026-11-08 the
+  chain has settled no epochs; Postgres seeds its demo history at negative ids
+  (`-1`…`-8`), so a seeded row can never collide with a chain id. A live
+  settlement needs a fresh chain and a fresh database, or a deliberate reset of
+  the seeded epoch/payout rows.
 - **Publish is a UI stub.** The 12 masters were minted by
   `scripts/mint-demo.sh`; the dashboard's "Publish a master" button has no
   wizard yet.

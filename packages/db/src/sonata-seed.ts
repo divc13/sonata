@@ -21,8 +21,8 @@ import {
  * chain-written history and never rewinds an indexer-updated owner.
  *
  * Seeded settlement history uses negative epoch ids (`-1` … `-8`), because the
- * platform contract counts real epochs from `0`: a demo row must never occupy
- * a chain id the oracle is about to settle. Older seeds wrote ids `1` … `8`;
+ * platform contract starts real epochs at `1` (`next_epoch_id = 1`): a demo row
+ * must never occupy a chain id the oracle is about to settle. Older seeds wrote ids `1` … `8`;
  * those rows are recognised by their deterministic demo tx hash and replaced
  * once, leaving any indexer-written epoch untouched.
  *

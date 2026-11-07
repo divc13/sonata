@@ -74,12 +74,14 @@ testnet.
   on-screen receipt hash is a deterministic demo hash, not a chain transaction.
 - The ownership/history rows on the master detail page.
 
-The seeded epochs run from id 1 to id 8. At the time of writing (2026-11-08)
-the live chain has settled **no** epochs, so
-`platform.get_stats.next_epoch_id` is `1`. The app's "settle" button derives the
-next id from the database (`9`); `scripts/settle-demo.ts` takes the id you pass.
-Neither matches the chain until the two sides are aligned. See the Epoch
-settlement scene below for the exact command and the precondition.
+The seeded epochs use negative ids (`-1`…`-8`, labelled Demo 1–Demo 8) so they
+can never occupy a chain id. Real epochs start at **1**: the deployed
+`platform` initializes `next_epoch_id = 1`, and there is no epoch 0. At the time
+of writing (2026-11-08) the live chain has settled **no** epochs, so
+`platform.get_stats.next_epoch_id` is `1`. The `/audit` button reads that value
+from the chain and labels itself `Settle epoch 1`; `scripts/settle-demo.ts`
+takes the id you pass. See the Epoch settlement scene below for the exact
+command and the precondition.
 
 ### Demo-gated live writes
 
@@ -128,7 +130,7 @@ The app defaults to these deployed ids in `packages/near/src/config.ts`; no
 override is needed for the demo. The optional server overrides are:
 
 ```bash
-SONATA_NEAR_RPC_URL=https://rpc.testnet.near.org
+SONATA_NEAR_RPC_URL=https://rpc.testnet.fastnear.com
 SONATA_MASTERS_ID=masters-sonata.testnet
 SONATA_PLATFORM_ID=platform-sonata.testnet
 SONATA_MARKET_ID=market-sonata.testnet
@@ -395,10 +397,10 @@ is a short hash with the full value in the hover title, not a download link.
 Say "the reserve is on chain" rather than pointing at a bar that is not there.
 
 **Important:** the deployed chain's `next_epoch_id` is currently `1`, while the
-seeded Postgres history is epochs 1–8. The page's `Settle epoch 9` button will
-therefore be rejected by the contract with `Epoch id mismatch`. Do **not** click
-it on camera unless you have aligned the two sides. Show the seeded history and
-the command instead:
+seeded Postgres history uses negative ids (`Demo 1`–`Demo 8`). The `/audit`
+button reads the chain and offers `Settle epoch 1`, which the contract accepts
+(epochs start at 1; there is no epoch 0). Settling it mirrors a real epoch next
+to the demo history. Show the seeded history and the command instead:
 
 ```bash
 bun run scripts/settle-demo.ts <epoch>

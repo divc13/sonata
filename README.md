@@ -254,10 +254,12 @@ and [`docs/SUBMISSION.md`](docs/SUBMISSION.md#known-limitations).
 - **Seeded earnings history.** The eight epochs, payouts, charts and the pass
   receipt are seeded. The contracts and the 12 masters, five listings and pass
   purchase are live testnet state.
-- **Epoch-id mismatch.** As of 2026-11-08 the chain has settled no epochs
-  (`next_epoch_id = 1`) while Postgres seeds epochs 1–8. A live settlement
-  needs a fresh chain and database, or a deliberate reset. `docs/DEMO.md`
-  explains the exact command and precondition.
+- **Epoch base and demo history.** Real epoch ids start at `1`: the deployed
+  platform initializes `next_epoch_id = 1` and there is no epoch 0. As of
+  2026-11-08 the chain has settled no epochs; Postgres seeds its demo history at
+  negative ids (`-1`…`-8`), so a seeded row can never collide with a chain id.
+  A live settlement needs a fresh chain and database, or a deliberate reset.
+  `docs/DEMO.md` explains the exact command and precondition.
 - **Demo signers, not a browser wallet.** `SONATA_DEMO_MODE=true` lets the
   server sign as the seeded listener, collector, nadia or oracle. There is no
   wallet-selector connection in the browser.

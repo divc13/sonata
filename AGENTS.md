@@ -380,8 +380,9 @@ for static files here.
 - USDC everywhere is **micro-USDC as text** (6 decimals, e.g. `"50000000"` =
   $50.00); seconds are integers. Never convert through floats — use
   `packages/near`'s `formatUsdMicro`/`microUsdcToUsd` for display.
-- `sonata_epoch.id` comes from the chain (no default) and real epochs count
-  from `0`. The demo seed writes its history at **negative ids** `-1`…`-8` so a
+- `sonata_epoch.id` comes from the chain (no default) and real epochs start at
+  `1` (`platform.new` initializes `next_epoch_id = 1`; there is no epoch 0).
+  The demo seed writes its history at **negative ids** `-1`…`-8` so a
   seeded row can never occupy a chain id; `nextEpochId`
   (`apps/web/lib/sonata-display.ts`) ignores negatives and
   `formatEpochLabel` renders them as `Demo 1`…`Demo 8`. Listen/store rows

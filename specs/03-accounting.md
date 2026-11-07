@@ -32,7 +32,8 @@ platform contract and a migration, which is out of scope.
 ## Epoch settlement
 
 An epoch is a settlement window. Production: weekly, Monday 00:00 UTC. Demo: manual trigger from
-`/audit`.
+`/audit`. Epoch ids start at **1** (`platform.new` initializes `next_epoch_id = 1`, so there is no
+epoch 0); seeded demo history uses negative ids.
 
 Inputs from the oracle:
 
