@@ -1,3 +1,4 @@
+import { io } from "next/cache";
 import { Suspense } from "react";
 
 import { MarketControls } from "~/components/sonata/market-controls";
@@ -51,6 +52,7 @@ function MarketSkeleton() {
 }
 
 async function MarketGrid() {
+  await io();
   const listings = await api.sonata.market.listings({ sort: "recent" });
 
   if (listings.length === 0) return <NoListings />;
