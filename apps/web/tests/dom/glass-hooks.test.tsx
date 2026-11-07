@@ -51,11 +51,22 @@ afterEach(async () => {
   html.removeAttribute("data-tab-min");
 });
 
-function TabBar({ onNavigate }: { onNavigate?: () => void }) {
+function TabBar({
+  onNavigate,
+  current = true,
+}: {
+  onNavigate?: () => void;
+  current?: boolean;
+}) {
   useTabBarMinimize();
   return (
     <nav data-glass-role="tabbar">
-      <a href="#home" data-glass-item="" onClick={onNavigate}>
+      <a
+        href="#home"
+        data-glass-item=""
+        aria-current={current ? "page" : undefined}
+        onClick={onNavigate}
+      >
         Home
       </a>
       <a href="#search" data-glass-item="">
@@ -71,6 +82,12 @@ describe("useTabBarMinimize", () => {
     for (const y of [20, 40, 60, 80]) scrollTo(y);
     expect(html.getAttribute("data-tab-min")).toBe("true");
     scrollTo(30);
+    expect(html.hasAttribute("data-tab-min")).toBe(false);
+  });
+
+  it("stays expanded when no tab is the current page", async () => {
+    await mount(<TabBar current={false} />);
+    for (const y of [20, 40, 60, 80, 120]) scrollTo(y);
     expect(html.hasAttribute("data-tab-min")).toBe(false);
   });
 
