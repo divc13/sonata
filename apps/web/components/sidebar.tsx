@@ -25,6 +25,7 @@ import Link from "next/link";
 import React from "react";
 
 import { GlassSurface } from "~/components/glass/glass-surface";
+import { Icons } from "~/components/icons";
 import { PathnameBoundary } from "~/components/pathname-boundary";
 import { isNavActive, libraryNav, primaryNav } from "~/config/nav";
 import type { NavItem } from "~/config/nav";
@@ -175,12 +176,22 @@ function SidebarLogo({ collapsed }: { collapsed: boolean }) {
   const link = (
     <Link
       href="/"
+      aria-label={siteConfig.name}
       className={cn(
-        "flex h-10 items-center gap-2 rounded-sm px-3 font-heading text-lg/6 font-bold tracking-[-0.02em] lowercase text-foreground group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:text-base",
+        "flex h-10 items-center gap-2 rounded-sm px-3 font-heading text-lg/6 font-bold tracking-[-0.02em] lowercase text-foreground group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:text-base",
         railMotion,
       )}
     >
-      <span className="min-w-0 flex-1 truncate">{siteConfig.name}</span>
+      {/* The icon rail has no room for the wordmark: show the brand tile instead. */}
+      <span
+        aria-hidden="true"
+        className="hidden size-7 shrink-0 place-items-center rounded-sm bg-primary text-primary-foreground group-data-[collapsible=icon]:grid"
+      >
+        <Icons.Logo className="size-4" />
+      </span>
+      <span className="min-w-0 flex-1 truncate group-data-[collapsible=icon]:hidden">
+        {siteConfig.name}
+      </span>
     </Link>
   );
 
