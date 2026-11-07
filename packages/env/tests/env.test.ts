@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 
 import { createClientEnv } from "../src/client";
 import { clientSchema } from "../src/schema";
+import { createServerEnv } from "../src/server";
 
 describe("clientSchema and NEXT_PUBLIC_APP_URL", () => {
   it("defaults NEXT_PUBLIC_APP_URL to https://infinitunes.rajputhemant.me when unset", () => {
@@ -49,5 +50,33 @@ describe("clientSchema and NEXT_PUBLIC_APP_URL", () => {
     expect(() =>
       clientSchema.NEXT_PUBLIC_APP_URL.parse("invalid-url"),
     ).toThrow();
+  });
+});
+
+describe("serverSchema and demo mode", () => {
+  it("defaults demo mode to false and keeps signer keys optional", () => {
+    const env = createServerEnv({ runtimeEnv: {} });
+
+    expect(env.SONATA_DEMO_MODE).toBe("false");
+    expect(env.SONATA_DEMO_LISTENER_SECRET_KEY).toBeUndefined();
+    expect(env.SONATA_ORACLE_SECRET_KEY).toBeUndefined();
+  });
+
+  it("reads demo mode and secret keys without a client prefix", () => {
+    const env = createServerEnv({
+      runtimeEnv: {
+        SONATA_DEMO_MODE: "true",
+        SONATA_DEMO_LISTENER_SECRET_KEY: "ed25519:test-only",
+      },
+    });
+
+    expect(env.SONATA_DEMO_MODE).toBe("true");
+    expect(env.SONATA_DEMO_LISTENER_SECRET_KEY).toBe("ed25519:test-only");
+  });
+
+  it("rejects a typo instead of guessing at demo mode", () => {
+    expect(() =>
+      createServerEnv({ runtimeEnv: { SONATA_DEMO_MODE: "yes" } }),
+    ).toThrow("Invalid environment variables");
   });
 });

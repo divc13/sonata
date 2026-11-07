@@ -1,3 +1,4 @@
+import { serverSchema } from "@infinitunes/env/schema";
 import { createEnv } from "@t3-oss/env-core";
 import { z } from "zod";
 
@@ -13,6 +14,7 @@ export function trpcEnv(
       JIOSAAVN_DES_KEY: z
         .string({ error: "JIOSAAVN_DES_KEY is required for playback" })
         .min(1, "JIOSAAVN_DES_KEY is required for playback"),
+      ...serverSchema,
     },
     runtimeEnv,
     emptyStringAsUndefined: true,
