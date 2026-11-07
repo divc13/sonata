@@ -7,6 +7,7 @@ import {
 import { formatDuration } from "@infinitunes/types";
 import { Badge } from "@infinitunes/ui/components/badge";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 
@@ -30,6 +31,7 @@ import {
   selectListingForToken,
 } from "~/lib/sonata/market";
 import { api } from "~/lib/trpc/server";
+import { asRoute } from "~/lib/utils";
 
 type MasterPageProps = { params: Promise<{ tokenId: string }> };
 
@@ -514,6 +516,13 @@ export default async function MasterPage({ params }: MasterPageProps) {
             ownerAccountId={master.ownerAccountId}
             listingPriceUsdc={listing?.priceUsdc ?? null}
           />
+
+          <Link
+            href={asRoute(`/master/${master.tokenId}/manage`)}
+            className="inline-flex w-fit items-center text-xs font-medium text-muted-foreground underline-offset-4 transition-colors duration-fast hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          >
+            Manage master
+          </Link>
 
           <section className="flex flex-col gap-2 rounded-xl border border-border/60 bg-card p-5">
             <h2 className="font-heading text-sm font-semibold tracking-[-0.01em]">
