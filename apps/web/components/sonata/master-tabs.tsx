@@ -18,7 +18,13 @@ type MasterTabsProps = {
 const triggerClassName =
   "flex-none px-0 text-sm font-medium text-muted-foreground pointer-coarse:min-h-11 data-active:text-foreground";
 
-/** The master detail tabs. Panels are server rendered and pass through. */
+/**
+ * The master detail tabs. Panels are server rendered and pass through.
+ *
+ * `h-auto!` is deliberate: the line variant pins the list to 32px, which
+ * squeezed the triggers to 15px. Auto height lets the coarse-pointer min
+ * height (44px) define the row and keeps the underline on the border.
+ */
 export function MasterTabs({
   overview,
   ownership,
