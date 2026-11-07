@@ -118,6 +118,18 @@
         "typescript": "catalog:",
       },
     },
+    "packages/near": {
+      "name": "@infinitunes/near",
+      "version": "0.1.0",
+      "devDependencies": {
+        "@infinitunes/types": "workspace:*",
+        "@infinitunes/typescript-config": "workspace:*",
+        "@types/bun": "catalog:",
+        "oxfmt": "catalog:",
+        "oxlint": "catalog:",
+        "typescript": "catalog:",
+      },
+    },
     "packages/trpc": {
       "name": "@infinitunes/trpc",
       "version": "0.3.0",
@@ -461,6 +473,8 @@
     "@infinitunes/db": ["@infinitunes/db@workspace:packages/db"],
 
     "@infinitunes/env": ["@infinitunes/env@workspace:packages/env"],
+
+    "@infinitunes/near": ["@infinitunes/near@workspace:packages/near"],
 
     "@infinitunes/trpc": ["@infinitunes/trpc@workspace:packages/trpc"],
 
