@@ -92,7 +92,7 @@ describe("viewer islands", () => {
 
     // The browse links are static; the library part is a placeholder, not the
     // signed-out prompt, so a signed-in visitor never sees a wrong state.
-    expect(text()).toContain("Top Albums");
+    expect(text()).toContain("Market");
     expect(text()).not.toContain("You need to be logged in");
     expect(text()).not.toContain("Road trip");
 
@@ -160,10 +160,10 @@ describe("viewer islands", () => {
       </ViewerProvider>,
     );
     expect(text()).not.toContain("Login");
-    expect(text()).not.toContain("Settings");
+    expect(text()).not.toContain("You");
 
     await act(async () => viewer.resolve(signedIn));
-    expect(text()).toContain("Settings");
+    expect(text()).toContain("You");
   });
 });
 

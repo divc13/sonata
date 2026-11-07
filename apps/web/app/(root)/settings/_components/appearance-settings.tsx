@@ -54,7 +54,7 @@ export function AppearanceSettings() {
             <SettingsRow
               id="mode"
               label="Theme mode"
-              help="Choose how Infinitunes looks to you."
+              help="Choose how Sonata looks to you."
               keywords="light dark system appearance"
             >
               <OptionGroup

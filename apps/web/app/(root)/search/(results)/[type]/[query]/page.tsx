@@ -45,7 +45,7 @@ export async function generateMetadata({
 
   return pageMetadata({
     title: `${label} for ${query}`,
-    description: `${label} matching "${query}" on Infinitunes.`,
+    description: `${label} matching "${query}" on Sonata.`,
     url: searchHref(query, type),
   });
 }

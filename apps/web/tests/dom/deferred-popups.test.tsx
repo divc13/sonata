@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "bun:test";
 
-import type { MegaMenu } from "@infinitunes/types";
 import { AppRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
+import { PathnameContext } from "next/dist/shared/lib/hooks-client-context.shared-runtime";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 
@@ -15,10 +15,6 @@ import { waitFor } from "./wait-for";
 
 const roots: Root[] = [];
 
-const megaMenu: MegaMenu = {
-  mega_menu: { top_artists: [], top_playlists: [], new_releases: [] },
-};
-
 async function mount(ui: React.ReactNode) {
   const container = document.createElement("div");
   document.body.append(container);
@@ -27,17 +23,19 @@ async function mount(ui: React.ReactNode) {
   await act(async () => {
     root.render(
       <AppRouterContext.Provider value={{} as never}>
-        <ThemeConfigContext.Provider
-          value={{
-            config: DEFAULT_THEME_CONFIG,
-            update: () => {},
-            reset: () => {},
-            isDefault: true,
-            isSaving: false,
-          }}
-        >
-          {ui}
-        </ThemeConfigContext.Provider>
+        <PathnameContext.Provider value="/">
+          <ThemeConfigContext.Provider
+            value={{
+              config: DEFAULT_THEME_CONFIG,
+              update: () => {},
+              reset: () => {},
+              isDefault: true,
+              isSaving: false,
+            }}
+          >
+            {ui}
+          </ThemeConfigContext.Provider>
+        </PathnameContext.Provider>
       </AppRouterContext.Provider>,
     );
   });
@@ -50,31 +48,20 @@ afterEach(async () => {
 });
 
 describe("toolbar popups load on intent", () => {
-  it("renders the mega menu closed in the shell with the classes of the real one", async () => {
-    const container = await mount(<MainNav megaMenu={megaMenu} />);
-    const shellTrigger = container.querySelector("button") as HTMLElement;
-    const shellLink = container.querySelector("a") as HTMLElement;
-    expect(shellTrigger.getAttribute("aria-expanded")).toBe("false");
-    const shellNav = container.querySelector("nav") as HTMLElement;
-    const shellClasses = [shellNav, shellTrigger, shellLink].map(
-      (el) => el.className,
+  it("renders the five primary links without a deferred popup", async () => {
+    const container = await mount(<MainNav />);
+    const links = [...container.querySelectorAll("a")];
+    expect(links.map((el) => el.textContent)).toEqual([
+      "Home",
+      "Search",
+      "Library",
+      "Market",
+      "You",
+    ]);
+    expect(container.querySelector("button")).toBeNull();
+    expect(container.querySelector("a[aria-current='page']")?.textContent).toBe(
+      "Home",
     );
-
-    await act(async () => {
-      shellNav.dispatchEvent(new Event("pointerover", { bubbles: true }));
-    });
-    await waitFor(() => container.querySelector("button") !== shellTrigger);
-
-    const realNav = container.querySelector("nav") as HTMLElement;
-    const real = [
-      realNav,
-      container.querySelector("button") as HTMLElement,
-      container.querySelector("a") as HTMLElement,
-    ];
-    expect(real.map((el) => el.className)).toEqual(shellClasses);
-    expect(real[1]?.textContent).toBe(shellTrigger.textContent);
-    // Nothing opened: the pointer was never on "Music".
-    expect(real[1]?.getAttribute("aria-expanded")).toBe("false");
   });
 
   it("hands keyboard focus to the real trigger when the swap happens under it", async () => {

@@ -2,7 +2,7 @@
 
 import { useSidebar } from "@infinitunes/ui/components/sidebar";
 import { Skeleton } from "@infinitunes/ui/components/skeleton";
-import { Cog, Compass, Home, Library, Search, User2 } from "lucide-react";
+import { Home, Library, Search, Store, User2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
@@ -12,7 +12,7 @@ import { PathnameBoundary } from "~/components/pathname-boundary";
 import { isNavActive } from "~/config/nav";
 import { useTabBarMinimize } from "~/hooks/use-tab-bar-minimize";
 import type { User } from "~/lib/auth";
-import { asRoute, cn } from "~/lib/utils";
+import { cn } from "~/lib/utils";
 
 type Props = {
   user?: User;
@@ -25,11 +25,12 @@ type Tab = { label: string; icon: LucideIcon; href: Route };
 const primaryTabs: Tab[] = [
   { label: "Home", icon: Home, href: "/" },
   { label: "Search", icon: Search, href: "/search" },
-  { label: "Browse", icon: Compass, href: asRoute("/browse") },
 ];
 
-const loginTab: Tab = { label: "Login", icon: User2, href: "/login" };
-const settingsTab: Tab = { label: "Settings", icon: Cog, href: "/settings" };
+const marketTab: Tab = { label: "Market", icon: Store, href: "/market" };
+
+const youTab: Tab = { label: "You", icon: User2, href: "/me" };
+const loginTab: Tab = { label: "You", icon: User2, href: "/login" };
 
 const itemClassName =
   "grid flex-1 place-content-center justify-items-center gap-1 rounded-full text-[0.625rem]/3 font-semibold text-muted-foreground transition-colors duration-fast outline-hidden focus-visible:ring-2 focus-visible:ring-ring aria-[current=page]:text-primary";
@@ -103,13 +104,15 @@ function MobileNavBar({
         <span>Library</span>
       </button>
 
+      <TabLink tab={marketTab} pathname={pathname} />
+
       {pending ? (
         <div aria-hidden className={cn(itemClassName, "pointer-events-none")}>
           <Skeleton className="size-6 rounded-full" />
           <Skeleton className="h-2.5 w-9" />
         </div>
       ) : (
-        <TabLink tab={user ? settingsTab : loginTab} pathname={pathname} />
+        <TabLink tab={user ? youTab : loginTab} pathname={pathname} />
       )}
     </GlassSelector>
   );

@@ -60,7 +60,7 @@ export function MainNavPopup({
             />
 
             <h2 className="font-heading text-2xl dark:drop-shadow-md text-foreground sm:text-2xl md:text-4xl">
-              What&apos;s Hot on Infinitunes
+              What&apos;s Hot on Sonata
             </h2>
 
             <Separator className="my-2" />
