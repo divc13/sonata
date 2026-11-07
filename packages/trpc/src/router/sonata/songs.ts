@@ -1,5 +1,5 @@
 import { sonataPayout, sonataSong } from "@infinitunes/db/schema";
-import { DEMO_ROLES, type ChainResult } from "@infinitunes/near";
+import { DEMO_ROLES, type ChainResult, type DemoRole } from "@infinitunes/near";
 import type {
   SonataMasterDetail,
   SonataPayoutRow,
@@ -10,7 +10,7 @@ import { asc } from "drizzle-orm";
 import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { publicProcedure, router } from "../../trpc";
+import { publicProcedure, router, type TRPCContext } from "../../trpc";
 import {
   assertSonataDemoMode,
   rethrowSonataError,
@@ -18,6 +18,7 @@ import {
 } from "./demo";
 import { withEarnings } from "./helpers";
 import { microUsdcInput, tokenIdInput } from "./inputs";
+import { cachedOwnerAccountId, roleToAccountId } from "./sync";
 
 /** Maximum page the catalog shell asks for; the app is small enough for 100. */
 const MAX_LIMIT = 100;
@@ -28,6 +29,45 @@ const pagedInput = z
     offset: z.number().int().min(0).optional(),
   })
   .optional();
+
+/**
+ * Fail early with a readable error when the demo role is not the cached owner
+ * of the master (for example after a resale). The chain stays authoritative:
+ * `song-wallet.withdraw` re-checks ownership, and if the cache cannot be read
+ * this pre-check steps aside instead of blocking a legitimate owner.
+ */
+async function assertWithdrawOwner(
+  db: TRPCContext["db"],
+  tokenId: string,
+  role: DemoRole,
+): Promise<void> {
+  let cachedOwner: string | null;
+
+  try {
+    cachedOwner = await cachedOwnerAccountId(db, tokenId);
+  } catch (error) {
+    console.error("[sonata:sync] could not preflight withdrawal ownership", {
+      tokenId,
+      reason: error instanceof Error ? error.message : String(error),
+    });
+    return;
+  }
+
+  if (cachedOwner === null) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: `Master "${tokenId}" is not in the local cache yet. Wait for the indexer to catch up, then retry the withdrawal.`,
+    });
+  }
+
+  const signerAccountId = roleToAccountId(role);
+  if (cachedOwner !== signerAccountId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: `Only the current owner can withdraw: "${tokenId}" is owned by ${cachedOwner}, but the "${role}" demo signer is ${signerAccountId}.`,
+    });
+  }
+}
 
 export const sonataSongsRouter = router({
   list: publicProcedure
@@ -95,6 +135,7 @@ export const sonataSongsRouter = router({
     .output(z.custom<ChainResult>())
     .mutation(async ({ input, ctx }) => {
       assertSonataDemoMode();
+      await assertWithdrawOwner(ctx.db, input.tokenId, input.role);
 
       try {
         return await sonataChainFor(ctx).withdrawFromSong(
