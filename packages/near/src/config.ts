@@ -7,7 +7,9 @@
  * and accounting constants live here too — they are locked in
  * specs/03-accounting.md and must not move.
  *
- * This package stays dependency-free: no wallet-selector or near-api-js yet.
+ * This package keeps the display/config layer dependency-free; the
+ * server-side RPC helpers in `client.ts` are the only consumers of
+ * `near-api-js`.
  */
 
 export const SONATA_NETWORK = "testnet" as const;
@@ -48,6 +50,36 @@ export const ORACLE_ACCOUNT_ID = withDefault(
   process.env.SONATA_ORACLE_ID,
   "oracle-sonata.testnet",
 );
+
+/**
+ * Demo identities from `ops/testnet.env`. Their secret keys are server-only
+ * (`SONATA_*_SECRET_KEY`) and are resolved lazily in `demo-accounts.ts`.
+ */
+export const DEMO_ACCOUNT_IDS = {
+  /** Pass buyer. */
+  listener: "listener.sonata.testnet",
+  /** Resale buyer. */
+  collector: "collector.sonata.testnet",
+  /** Epoch settlement signer. */
+  oracle: ORACLE_ACCOUNT_ID,
+  /** Demo artist / seller. */
+  nadia: "nadia-sonata.testnet",
+} as const;
+
+/** YoctoNEAR attached to NEP-141 `ft_transfer_call` (receiver-attached calls). */
+export const ONE_YOCTO = 1n;
+
+/** 100 TGas covers the cross-contract pass, sale and withdrawal callbacks. */
+export const DEFAULT_FUNCTION_CALL_GAS = 100_000_000_000_000n;
+
+/** `market.list` minimum storage deposit, 0.01 NEAR (contracts/market/src/lib.rs). */
+export const LISTING_STORAGE_YOCTO = 10_000_000_000_000_000_000_000n;
+
+/**
+ * `nft_approve` stores one approved account id and requires the caller to
+ * cover that state; 0.01 NEAR is ample and the collection refunds the excess.
+ */
+export const APPROVAL_STORAGE_YOCTO = 10_000_000_000_000_000_000n;
 
 /* Locked accounting constants (specs/03-accounting.md).*/
 

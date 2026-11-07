@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "lint": "oxlint",
+    "test": "bun test",
     "type-check": "tsc --noEmit"
   },
   "devDependencies": {
@@ -17,5 +18,8 @@
   },
   "exports": {
     ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "near-api-js": "^7.4.0"
   }
 }
