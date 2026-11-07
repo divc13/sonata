@@ -146,6 +146,26 @@ describe("micro-USDC argument building", () => {
     expect(call.gas).toBeUndefined();
   });
 
+  it("can target a replacement song wallet after the rescue migration", () => {
+    const replacement = "midnight-drive-fixed.masters-sonata.testnet";
+
+    expect(buildWithdrawCall("midnight-drive", undefined, replacement)).toEqual(
+      {
+        contractId: replacement,
+        method: "withdraw_all",
+        args: {},
+        deposit: 0n,
+      },
+    );
+    expect(
+      buildWithdrawCall("midnight-drive", "1200000", replacement),
+    ).toMatchObject({
+      contractId: replacement,
+      method: "withdraw",
+      args: { amount: "1200000" },
+    });
+  });
+
   it("builds approve-then-list calls with the required deposits", () => {
     const [approve, list] = buildListCalls("midnight-drive", "50000000");
 
