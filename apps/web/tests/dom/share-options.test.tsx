@@ -37,7 +37,7 @@ describe("ShareOptions title", () => {
 
   it("falls back to the site name without a title", async () => {
     const c = await mount(<ShareOptions />);
-    expect(hrefOf(c, "Twitter")).toContain("text=Infinitunes");
+    expect(hrefOf(c, "Twitter")).toContain("text=Sonata");
   });
 });
 

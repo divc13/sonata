@@ -241,19 +241,19 @@ describe("sidebar active route", () => {
 
     expect(link("Recently Played")?.getAttribute("aria-current")).toBe("page");
     expect(link("Your Favorite")?.hasAttribute("aria-current")).toBe(false);
-    expect(link("Top Albums")?.hasAttribute("aria-current")).toBe(false);
+    expect(link("Market")?.hasAttribute("aria-current")).toBe(false);
   });
 
-  it("keeps a browse item active on its detail pages", async () => {
+  it("keeps a primary item active on its detail pages", async () => {
     await mount(
       <AppSidebarProvider>
         <AppSidebar />
       </AppSidebarProvider>,
-      "/album/some-album",
+      "/search/songs",
     );
 
-    expect(link("Top Albums")?.getAttribute("aria-current")).toBe("page");
-    expect(link("Top Charts")?.hasAttribute("aria-current")).toBe(false);
+    expect(link("Search")?.getAttribute("aria-current")).toBe("page");
+    expect(link("Market")?.hasAttribute("aria-current")).toBe(false);
   });
 
   it("marks the matching playlist", async () => {
@@ -340,7 +340,7 @@ describe("sidebar collapse", () => {
   it("keeps every nav link named while collapsed", async () => {
     await mount(<Shell defaultOpen={false} />);
 
-    expect(link("Top Albums")).toBeDefined();
+    expect(link("Market")).toBeDefined();
     expect(link("Recently Played")).toBeDefined();
   });
 });
@@ -365,7 +365,7 @@ describe("tab bar", () => {
   });
 
   it("is one glass item per tab, and only the current one is marked", async () => {
-    const container = await mount(<MobileShell />, "/browse/x");
+    const container = await mount(<MobileShell />, "/market/x");
     const items = container.querySelectorAll(
       "nav[aria-label=Primary] > [data-glass-item]",
     );
@@ -374,7 +374,7 @@ describe("tab bar", () => {
     );
 
     expect(items).toHaveLength(5);
-    expect(current.map((item) => item.textContent)).toEqual(["Browse"]);
+    expect(current.map((item) => item.textContent)).toEqual(["Market"]);
   });
 
   it("minimizes after scrolling down and expands on scrolling back to the top", async () => {
