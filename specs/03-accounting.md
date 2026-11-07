@@ -4,12 +4,12 @@ This file is the money contract. If code disagrees with it, the code is wrong.
 
 ## Units
 
-| Unit | Representation | Example |
-| --- | --- | --- |
-| USDC | `U128`, 6 decimals | `5_000_000` = $5.00 |
-| Rate `R` | micro-USDC per 3600 seconds | `30_000` = $0.03/hour |
-| Listening time | **seconds**, `u64` | `14_400` = 4 hours |
-| Display hours | seconds / 3600, 2 decimals | `4.00 h` |
+| Unit           | Representation              | Example               |
+| -------------- | --------------------------- | --------------------- |
+| USDC           | `U128`, 6 decimals          | `5_000_000` = $5.00   |
+| Rate `R`       | micro-USDC per 3600 seconds | `30_000` = $0.03/hour |
+| Listening time | **seconds**, `u64`          | `14_400` = 4 hours    |
+| Display hours  | seconds / 3600, 2 decimals  | `4.00 h`              |
 
 The oracle reports **seconds**, not floating-point hours. All on-chain math is integer. The UI
 converts to hours for display. This avoids rounding drift and makes the audit bundle exact.
@@ -17,11 +17,11 @@ converts to hours for display. This avoids rounding drift and makes the audit bu
 ## Constants (locked)
 
 ```ts
-export const PASS_PRICE_USDC = 5_000_000n;          // $5.00
-export const PASS_DURATION_SEC = 2_592_000n;        // 30 days
-export const RATE_PER_HOUR_USDC = 30_000n;          // $0.03
-export const DAILY_CAP_SEC = 14_400n;               // 4 hours
-export const ROYALTY_BPS = 500n;                    // 5%
+export const PASS_PRICE_USDC = 5_000_000n; // $5.00
+export const PASS_DURATION_SEC = 2_592_000n; // 30 days
+export const RATE_PER_HOUR_USDC = 30_000n; // $0.03
+export const DAILY_CAP_SEC = 14_400n; // 4 hours
+export const ROYALTY_BPS = 500n; // 5%
 export const RESERVE_MONTHS = 3n;
 export const PRO_RATA_THRESHOLD_MONTHS = 1n;
 ```
@@ -38,8 +38,8 @@ Inputs from the oracle:
 
 ```ts
 type PayoutEntry = {
-  tokenId: string;       // "midnight-drive"
-  seconds: number;       // verified listening seconds in this epoch
+  tokenId: string; // "midnight-drive"
+  seconds: number; // verified listening seconds in this epoch
 };
 ```
 
@@ -152,11 +152,11 @@ The contract stores `balanceBefore`, `totalSeconds`, `effectiveRatePerHour`, `to
 The reserve exists so the platform can keep paying `R` when revenue dips. It is not a separate
 account and it is not a claim on future revenue.
 
-| Coverage | Meaning | Behavior |
-| --- | --- | --- |
-| >= 3 months | Healthy | Platform may withdraw above 3 months |
-| 1 to 3 months | Building | Platform may not withdraw below 3 months; payouts still at `R` if balance allows |
-| < 1 month | Distressed | Payouts are pro-rata if `R` would exhaust the balance; no platform withdrawal |
+| Coverage      | Meaning    | Behavior                                                                         |
+| ------------- | ---------- | -------------------------------------------------------------------------------- |
+| >= 3 months   | Healthy    | Platform may withdraw above 3 months                                             |
+| 1 to 3 months | Building   | Platform may not withdraw below 3 months; payouts still at `R` if balance allows |
+| < 1 month     | Distressed | Payouts are pro-rata if `R` would exhaust the balance; no platform withdrawal    |
 
 `reserve_target = 3 * trailing_30d_payouts`. `one_month_reserve = trailing_30d_payouts`. The owner
 updates both at the start of each month from the indexer's trailing payout sum. The update emits
@@ -227,7 +227,7 @@ All examples use `R = $0.03/hour`.
 
 ### 6. Sale mid-epoch
 
-- Epoch 7 settles $1.20 into `midnight-drive.masters.sonata.testnet`.
+- Epoch 7 settles $1.20 into `midnight-drive.masters-sonata.testnet`.
 - The seller lists the master for $50.00.
 - A collector buys it. The NFT moves to the collector. The song account already holds $1.20.
 - The seller's `withdraw` call panics with `"Not the owner"`.

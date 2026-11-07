@@ -24,7 +24,7 @@ Keys live locally in `~/.near-credentials/accounts.json`. Never commit that file
 Song accounts are created by the master contract as sub-accounts of the collection:
 `midnight-drive.masters-sonata.testnet`, `paper-moons.masters-sonata.testnet`, and so on.
 
-The spec's example names (`masters.sonata.testnet`, `nadia.testnet`) were placeholders. These hyphenated accounts are the deployed testnet names. Use `ops/testnet.env` as the source of truth in scripts.
+The spec's original dotted names (`masters.sonata.testnet`, `nadia.testnet`) were placeholders. These hyphenated accounts are the deployed testnet names. Use `ops/testnet.env` as the source of truth in scripts.
 
 ## Deploy order
 

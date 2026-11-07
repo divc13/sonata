@@ -17,7 +17,7 @@ be sold, and its account, balance, and future income go with it.
 | Piece            | How it works                                                                               |
 | ---------------- | ------------------------------------------------------------------------------------------ |
 | **Master**       | One song, one 1-of-1 NFT. No fractions, no editions.                                       |
-| **Song account** | Each master owns `<slug>.masters.sonata.testnet`, a NEAR account with no keys.             |
+| **Song account** | Each master owns `<slug>.masters-sonata.testnet`, a NEAR account with no keys.             |
 | **Pass**         | $5 for 30 days of unlimited listening. A non-transferable NFT.                             |
 | **Earnings**     | $0.03 per verified listening hour, paid in USDC directly to the song account.              |
 | **Cap**          | 4 verified hours per listener per day. Self-listens do not earn.                           |
@@ -57,10 +57,10 @@ The build is spec-driven. Start here:
 ```
 Browser (Next.js player) ── tRPC ── Postgres (catalog, listens, earnings)
         │
-        └── NEAR RPC ── masters.sonata.testnet   (NEP-171 + song account creation)
-                        platform.sonata.testnet  (pass NFT, treasury, settlement)
-                        market.sonata.testnet    (fixed-price resale)
-                        usdc.sonata.testnet      (mock NEP-141, 6 decimals)
+        └── NEAR RPC ── masters-sonata.testnet   (NEP-171 + song account creation)
+                        platform-sonata.testnet  (pass NFT, treasury, settlement)
+                        market-sonata.testnet    (fixed-price resale)
+                        usdc-sonata.testnet      (mock NEP-141, 6 decimals)
                         <slug>.masters...        (keyless song accounts)
 ```
 

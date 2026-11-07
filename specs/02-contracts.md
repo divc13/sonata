@@ -3,13 +3,13 @@
 Five contracts on NEAR testnet. Rust, `near-sdk` 5.x, NEP standards. All amounts are `U128` in
 micro-USDC (6 decimals) unless stated. Time is Unix seconds (`u64`).
 
-| Contract | Account | Purpose |
-| --- | --- | --- |
-| `mock-usdc` | `usdc.sonata.testnet` | NEP-141 test stablecoin |
-| `master-nft` | `masters.sonata.testnet` | NEP-171 masters, song account creation, royalty |
-| `song-wallet` | `<slug>.masters.sonata.testnet` | Keyless per-song account, owner-gated withdrawal |
-| `platform` | `platform.sonata.testnet` | Pass NFT, treasury, epoch settlement |
-| `market` | `market.sonata.testnet` | Fixed-price resale, 5% royalty |
+| Contract      | Account                         | Purpose                                          |
+| ------------- | ------------------------------- | ------------------------------------------------ |
+| `mock-usdc`   | `usdc-sonata.testnet`           | NEP-141 test stablecoin                          |
+| `master-nft`  | `masters-sonata.testnet`        | NEP-171 masters, song account creation, royalty  |
+| `song-wallet` | `<slug>.masters-sonata.testnet` | Keyless per-song account, owner-gated withdrawal |
+| `platform`    | `platform-sonata.testnet`       | Pass NFT, treasury, epoch settlement             |
+| `market`      | `market-sonata.testnet`         | Fixed-price resale, 5% royalty                   |
 
 ## Conventions
 
@@ -80,8 +80,8 @@ NEP-199 payouts.
 pub struct Contract {
     owner_id: AccountId,
     collection_id: AccountId,              // == env::current_account_id()
-    platform_id: AccountId,                // platform.sonata.testnet
-    payment_token: AccountId,              // usdc.sonata.testnet
+    platform_id: AccountId,                // platform-sonata.testnet
+    payment_token: AccountId,              // usdc-sonata.testnet
     song_wallet_code_hash: CryptoHash,     // sha256 of song-wallet.wasm, deployed globally
     metadata: NFTContractMetadata,
     tokens: UnorderedMap<TokenId, Master>,
@@ -212,20 +212,20 @@ and the payment split to be coordinated.
 
 ### Errors
 
-| Error | When |
-| --- | --- |
-| `"Invalid token id"` | Slug fails the rules |
-| `"Token already exists"` | Duplicate `token_id` |
-| `"Deposit too small"` | Below `mint_deposit` |
-| `"Only owner"` | Admin method from a non-owner |
-| `"Not approved"` | Transfer without ownership or approval |
-| `"Max len payout too small"` | NEP-199 bound cannot fit |
+| Error                        | When                                   |
+| ---------------------------- | -------------------------------------- |
+| `"Invalid token id"`         | Slug fails the rules                   |
+| `"Token already exists"`     | Duplicate `token_id`                   |
+| `"Deposit too small"`        | Below `mint_deposit`                   |
+| `"Only owner"`               | Admin method from a non-owner          |
+| `"Not approved"`             | Transfer without ownership or approval |
+| `"Max len payout too small"` | NEP-199 bound cannot fit               |
 
 ### Events
 
 ```json
-{"standard":"sonata","version":"1.0.0","event":"nft_mint","data":{"token_id":"midnight-drive","owner_id":"alice.testnet","creator_id":"alice.testnet","sub_account":"midnight-drive.masters.sonata.testnet"}}
-{"standard":"sonata","version":"1.0.0","event":"nft_transfer","data":{"token_id":"midnight-drive","old_owner_id":"alice.testnet","new_owner_id":"bob.testnet","authorized_id":"market.sonata.testnet"}}
+{"standard":"sonata","version":"1.0.0","event":"nft_mint","data":{"token_id":"midnight-drive","owner_id":"alice.testnet","creator_id":"alice.testnet","sub_account":"midnight-drive.masters-sonata.testnet"}}
+{"standard":"sonata","version":"1.0.0","event":"nft_transfer","data":{"token_id":"midnight-drive","old_owner_id":"alice.testnet","new_owner_id":"bob.testnet","authorized_id":"market-sonata.testnet"}}
 ```
 
 ---
@@ -301,17 +301,26 @@ at a time per wallet (the guard), a single `pending: Option<PendingWithdraw>` fi
 
 ### Errors
 
-| Error | When |
-| --- | --- |
-| `"Already initialized"` | `new` called twice |
-| `"Not the owner"` | Caller is not the current NFT owner |
-| `"Nothing to withdraw"` | Zero balance |
-| `"Claim in progress"` | Reentrancy guard is set |
+| Error                   | When                                |
+| ----------------------- | ----------------------------------- |
+| `"Already initialized"` | `new` called twice                  |
+| `"Not the owner"`       | Caller is not the current NFT owner |
+| `"Nothing to withdraw"` | Zero balance                        |
+| `"Claim in progress"`   | Reentrancy guard is set             |
 
 ### Events
 
 ```json
-{"standard":"sonata","version":"1.0.0","event":"withdraw","data":{"token_id":"midnight-drive","owner":"alice.testnet","amount":"1200000"}}
+{
+  "standard": "sonata",
+  "version": "1.0.0",
+  "event": "withdraw",
+  "data": {
+    "token_id": "midnight-drive",
+    "owner": "alice.testnet",
+    "amount": "1200000"
+  }
+}
 ```
 
 ### Security notes
@@ -541,30 +550,30 @@ governance action and the UI shows it.
 
 ### Errors
 
-| Error | When |
-| --- | --- |
-| `"Only oracle"` | `settle_epoch` from a non-oracle |
-| `"Epoch id mismatch"` | `epoch_id != next_epoch_id` |
-| `"Empty epoch"` | No entries |
-| `"Unsorted entries"` | Duplicate or out-of-order token ids |
-| `"Song not registered"` | Missing song account |
-| `"Only collection"` | `register_song` from a non-collection |
-| `"Song already registered"` | Duplicate registration |
-| `"Only owner"` | Admin method |
-| `"Paused"` | Pass purchase or settlement while paused |
-| `"Pass is non-transferable"` | Transfer attempt |
-| `"Wrong payment token"` | `ft_on_transfer` from a non-USDC account |
-| `"Insufficient payment"` | Amount below price (refunded, not minted) |
-| `"Reserve floor"` | Revenue withdrawal would breach the reserve |
+| Error                        | When                                        |
+| ---------------------------- | ------------------------------------------- |
+| `"Only oracle"`              | `settle_epoch` from a non-oracle            |
+| `"Epoch id mismatch"`        | `epoch_id != next_epoch_id`                 |
+| `"Empty epoch"`              | No entries                                  |
+| `"Unsorted entries"`         | Duplicate or out-of-order token ids         |
+| `"Song not registered"`      | Missing song account                        |
+| `"Only collection"`          | `register_song` from a non-collection       |
+| `"Song already registered"`  | Duplicate registration                      |
+| `"Only owner"`               | Admin method                                |
+| `"Paused"`                   | Pass purchase or settlement while paused    |
+| `"Pass is non-transferable"` | Transfer attempt                            |
+| `"Wrong payment token"`      | `ft_on_transfer` from a non-USDC account    |
+| `"Insufficient payment"`     | Amount below price (refunded, not minted)   |
+| `"Reserve floor"`            | Revenue withdrawal would breach the reserve |
 
 ### Events
 
 ```json
-{"standard":"sonata","version":"1.0.0","event":"pass_minted","data":{"account_id":"listener.testnet","token_id":"pass-1","expires_at":1765000000,"amount":"5000000"}}
-{"standard":"sonata","version":"1.0.0","event":"pass_renewed","data":{"account_id":"listener.testnet","token_id":"pass-1","expires_at":1767592000,"amount":"5000000"}}
+{"standard":"sonata","version":"1.0.0","event":"pass_minted","data":{"account_id":"listener.sonata.testnet","token_id":"pass-1","expires_at":1765000000,"amount":"5000000"}}
+{"standard":"sonata","version":"1.0.0","event":"pass_renewed","data":{"account_id":"listener.sonata.testnet","token_id":"pass-1","expires_at":1767592000,"amount":"5000000"}}
 {"standard":"sonata","version":"1.0.0","event":"epoch_settled","data":{"epoch_id":1,"total_seconds":360000,"effective_rate_per_hour":"30000","total_paid":"3000000","listen_root":"ipfs://bafy...","entries_count":11,"mode":"constant"}}
 {"standard":"sonata","version":"1.0.0","event":"reserve_targets_changed","data":{"reserve_target":"900000000","one_month_reserve":"300000000"}}
-{"standard":"sonata","version":"1.0.0","event":"payout_sent","data":{"epoch_id":1,"token_id":"midnight-drive","song_account":"midnight-drive.masters.sonata.testnet","amount":"120000","seconds":14400}}
+{"standard":"sonata","version":"1.0.0","event":"payout_sent","data":{"epoch_id":1,"token_id":"midnight-drive","song_account":"midnight-drive.masters-sonata.testnet","amount":"120000","seconds":14400}}
 {"standard":"sonata","version":"1.0.0","event":"revenue_withdrawn","data":{"receiver_id":"sonata.testnet","amount":"500000"}}
 ```
 
@@ -651,13 +660,14 @@ Buyer calls `usdc.ft_transfer_call(market, price, "buy:<token_id>")`.
 The NFT transfer and the payment transfers are separate promises. Order: pay royalty and seller,
 then transfer NFT. If the NFT transfer fails, the payments have already happened. To avoid this, use
 `nft_transfer_payout` or a two-phase callback:
+
 - Phase 1: `master-nft.nft_transfer_payout(buyer, token_id, ..., amount, 2)` returns the payout and
   transfers the NFT in the same receipt.
 - Phase 2: on the callback, send USDC to the creator and seller.
-This is the correct order: NFT first, then money. Spec: use `nft_transfer_payout` (NEP-199) which
-transfers and returns the payout, then in the callback distribute USDC. The market holds the buyer's
-USDC from `ft_on_transfer` until the callback. If the NFT transfer fails, the callback is not
-executed; the market owner can refund the buyer via `recover`.
+  This is the correct order: NFT first, then money. Spec: use `nft_transfer_payout` (NEP-199) which
+  transfers and returns the payout, then in the callback distribute USDC. The market holds the buyer's
+  USDC from `ft_on_transfer` until the callback. If the NFT transfer fails, the callback is not
+  executed; the market owner can refund the buyer via `recover`.
 - `nft_transfer_payout` requires the market to be approved. The seller approves the market in `list`
   or in the UI before listing.
 
@@ -668,15 +678,15 @@ lets the seller set the royalty. The remaining 95% goes to the seller.
 
 ### Errors
 
-| Error | When |
-| --- | --- |
-| `"Price must be positive"` | `price == 0` |
-| `"Listing not active"` | Buy of a missing or cancelled listing |
-| `"Not the seller"` | Cancel by a non-seller |
-| `"Not the owner"` | List by a non-owner |
-| `"Wrong amount"` | Payment below price (refunded) |
-| `"Not approved"` | NFT transfer without approval |
-| `"Already listed"` | Duplicate active listing |
+| Error                      | When                                  |
+| -------------------------- | ------------------------------------- |
+| `"Price must be positive"` | `price == 0`                          |
+| `"Listing not active"`     | Buy of a missing or cancelled listing |
+| `"Not the seller"`         | Cancel by a non-seller                |
+| `"Not the owner"`          | List by a non-owner                   |
+| `"Wrong amount"`           | Payment below price (refunded)        |
+| `"Not approved"`           | NFT transfer without approval         |
+| `"Already listed"`         | Duplicate active listing              |
 
 ### Events
 
@@ -689,13 +699,13 @@ lets the seller set the royalty. The remaining 95% goes to the seller.
 
 ## Deployment order
 
-1. Deploy `mock-usdc` at `usdc.sonata.testnet`.
+1. Deploy `mock-usdc` at `usdc-sonata.testnet`.
 2. Deploy `song-wallet` globally, capture `sha256(wasm)`.
-3. Deploy `master-nft` at `masters.sonata.testnet` with the platform account (placeholder) and the
+3. Deploy `master-nft` at `masters-sonata.testnet` with the platform account (placeholder) and the
    wallet hash. Fund it with NEAR for sub-account creation.
-4. Deploy `platform` at `platform.sonata.testnet` with `collection_id = masters...`, `oracle_id`,
+4. Deploy `platform` at `platform-sonata.testnet` with `collection_id = masters...`, `oracle_id`,
    and the demo parameters.
-5. Deploy `market` at `market.sonata.testnet`.
+5. Deploy `market` at `market-sonata.testnet`.
 6. Call `master-nft.set_platform(platform)`, `platform.set_oracle(oracle)`, and
    `platform.set_reserve_targets(...)`.
 7. Register the platform on USDC and deposit storage.

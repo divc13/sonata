@@ -397,7 +397,7 @@ for static files here.
 - `packages/near` is dependency-free (no wallet-selector/near-api-js yet) and
   re-exports the Sonata DTOs from `@infinitunes/types/src/sonata.ts`; contract
   ids come from `SONATA_*` env with testnet defaults
-  (`masters/platform/market/usdc.sonata.testnet`).
+  (`masters/platform/market/usdc-sonata.testnet`).
 
 ## Maintaining this file
 

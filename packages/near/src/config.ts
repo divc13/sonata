@@ -28,16 +28,16 @@ export const USDC_DECIMALS = 6;
 /** The five deployed contracts, overridable per environment. */
 export const CONTRACT_IDS = {
   /** NEP-171 masters collection + song account factory. */
-  masters: withDefault(process.env.SONATA_MASTERS_ID, "masters.sonata.testnet"),
+  masters: withDefault(process.env.SONATA_MASTERS_ID, "masters-sonata.testnet"),
   /** Pass NFT, treasury, epoch settlement, reserve. */
   platform: withDefault(
     process.env.SONATA_PLATFORM_ID,
-    "platform.sonata.testnet",
+    "platform-sonata.testnet",
   ),
   /** Fixed-price resale with 5% royalty. */
-  market: withDefault(process.env.SONATA_MARKET_ID, "market.sonata.testnet"),
+  market: withDefault(process.env.SONATA_MARKET_ID, "market-sonata.testnet"),
   /** Mock USDC (NEP-141). */
-  usdc: withDefault(process.env.SONATA_USDC_ID, "usdc.sonata.testnet"),
+  usdc: withDefault(process.env.SONATA_USDC_ID, "usdc-sonata.testnet"),
 } as const;
 
 /**
@@ -46,7 +46,7 @@ export const CONTRACT_IDS = {
  */
 export const ORACLE_ACCOUNT_ID = withDefault(
   process.env.SONATA_ORACLE_ID,
-  "oracle.sonata.testnet",
+  "oracle-sonata.testnet",
 );
 
 /* Locked accounting constants (specs/03-accounting.md).*/

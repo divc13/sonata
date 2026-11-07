@@ -43,12 +43,12 @@ keeps the margin and holds a reserve so the rate does not wobble.
 
 ## Users
 
-| User | Goal | Success feels like |
-| --- | --- | --- |
-| **Listener** | Hear great music, know the money reaches artists | One tap to buy a pass, then play anything |
-| **Artist** | Publish a master, see earnings, get paid | Upload, publish, watch the number grow, withdraw |
-| **Collector** | Buy a master with real income | See trailing earnings, buy, receive the wallet |
-| **Operator** | Keep the rate honest and the books balanced | One screen with hours, rate, payouts, reserve |
+| User          | Goal                                             | Success feels like                               |
+| ------------- | ------------------------------------------------ | ------------------------------------------------ |
+| **Listener**  | Hear great music, know the money reaches artists | One tap to buy a pass, then play anything        |
+| **Artist**    | Publish a master, see earnings, get paid         | Upload, publish, watch the number grow, withdraw |
+| **Collector** | Buy a master with real income                    | See trailing earnings, buy, receive the wallet   |
+| **Operator**  | Keep the rate honest and the books balanced      | One screen with hours, rate, payouts, reserve    |
 
 ## Product model
 
@@ -56,7 +56,7 @@ keeps the margin and holds a reserve so the rate does not wobble.
 
 - 1-of-1 NFT per song master. One master per recording. No editions, no fractions.
 - Token id is a slug, for example `midnight-drive`.
-- The NFT owns the song account `<slug>.masters.sonata.testnet`.
+- The NFT owns the song account `<slug>.masters-sonata.testnet`.
 - Metadata: title, artist, description, cover, audio hash, duration, genre, release date.
 - The creator is recorded at mint and receives the secondary royalty forever.
 
@@ -107,28 +107,28 @@ keeps the margin and holds a reserve so the rate does not wobble.
 
 ## Demo parameters (locked)
 
-| Parameter | Value |
-| --- | --- |
-| Pass price | $5.00 |
-| Pass duration | 30 days |
-| Rate R | $0.03 per verified hour |
-| Daily cap | 4 hours per listener |
-| Week cap | 28 hours per listener (implied) |
-| Reserve target | 3 months of trailing payouts |
-| Pro-rata trigger | reserve below 1 month |
-| Rate changes | none in v1 (immutable) |
-| Secondary royalty | 500 bps (5%) |
-| Settlement | weekly in production, manual trigger in demo |
-| Settlement currency | mock USDC, 6 decimals |
-| Network | NEAR testnet |
+| Parameter           | Value                                        |
+| ------------------- | -------------------------------------------- |
+| Pass price          | $5.00                                        |
+| Pass duration       | 30 days                                      |
+| Rate R              | $0.03 per verified hour                      |
+| Daily cap           | 4 hours per listener                         |
+| Week cap            | 28 hours per listener (implied)              |
+| Reserve target      | 3 months of trailing payouts                 |
+| Pro-rata trigger    | reserve below 1 month                        |
+| Rate changes        | none in v1 (immutable)                       |
+| Secondary royalty   | 500 bps (5%)                                 |
+| Settlement          | weekly in production, manual trigger in demo |
+| Settlement currency | mock USDC, 6 decimals                        |
+| Network             | NEAR testnet                                 |
 
 ## Naming
 
 - Product: **Sonata**.
 - Repo: `divc13/sonata`.
-- Contracts: `masters.sonata.testnet`, `platform.sonata.testnet`, `market.sonata.testnet`,
-  `usdc.sonata.testnet`, `oracle.sonata.testnet`.
-- Song accounts: `<slug>.masters.sonata.testnet`.
+- Contracts: `masters-sonata.testnet`, `platform-sonata.testnet`, `market-sonata.testnet`,
+  `usdc-sonata.testnet`, `oracle-sonata.testnet`.
+- Song accounts: `<slug>.masters-sonata.testnet`.
 - In user-facing copy, say **master**, **pass**, **earnings**, **owner**. Use **NFT**, **wallet**,
   **contract**, and **account** only in details drawers and the audit screen.
 

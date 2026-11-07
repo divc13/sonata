@@ -57,7 +57,7 @@ export function formatHours(seconds: number): string {
   return `${hoursOf(seconds).toFixed(2)} h`;
 }
 
-/** `nadia.testnet` stays whole; long contract/account ids get clipped. */
+/** `nadia-sonata.testnet` stays whole; long contract/account ids get clipped. */
 export function shortAccount(accountId: string): string {
   const id = accountId.trim();
   if (id.length <= 20) return id;

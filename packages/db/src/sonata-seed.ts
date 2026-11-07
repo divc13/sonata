@@ -25,14 +25,14 @@ import {
  * with floor rounding, exactly like `platform.settle_epoch`.
  */
 
-export const DEMO_PASS_ACCOUNT = "listener.testnet";
+export const DEMO_PASS_ACCOUNT = "listener.sonata.testnet";
 
 type DemoArtist = { accountId: string; name: string; handle: string };
 
 export const DEMO_ARTISTS: DemoArtist[] = [
-  { accountId: "nadia.testnet", name: "Nadia Vale", handle: "nadia" },
-  { accountId: "kofi.testnet", name: "Kofi Mensah", handle: "kofi" },
-  { accountId: "lena.testnet", name: "Lena Ortiz", handle: "lena" },
+  { accountId: "nadia-sonata.testnet", name: "Nadia Vale", handle: "nadia" },
+  { accountId: "kofi-sonata.testnet", name: "Kofi Mensah", handle: "kofi" },
+  { accountId: "lena-sonata.testnet", name: "Lena Ortiz", handle: "lena" },
 ];
 
 type DemoSong = {
@@ -51,7 +51,7 @@ const DEMO_SONGS: DemoSong[] = [
     title: "Midnight Drive",
     artist: 0,
     genre: "Synthwave",
-    durationSec: 186,
+    durationSec: 90,
     description:
       "Neon-lit coastal highway at 2am. Analog pads, gated reverb drums.",
   },
@@ -60,7 +60,7 @@ const DEMO_SONGS: DemoSong[] = [
     title: "Paper Moons",
     artist: 1,
     genre: "Ambient",
-    durationSec: 214,
+    durationSec: 81,
     description: "Weightless tape loops for late-night studying.",
   },
   {
@@ -68,7 +68,7 @@ const DEMO_SONGS: DemoSong[] = [
     title: "Velvet Static",
     artist: 2,
     genre: "Dream pop",
-    durationSec: 219,
+    durationSec: 90,
     description: "Shimmering guitars buried under a warm blanket of noise.",
   },
   {
@@ -76,7 +76,7 @@ const DEMO_SONGS: DemoSong[] = [
     title: "Slow Arc",
     artist: 0,
     genre: "Electronic",
-    durationSec: 202,
+    durationSec: 84,
     description: "A single synthesizer line bending over eight minutes.",
   },
   {
@@ -84,7 +84,7 @@ const DEMO_SONGS: DemoSong[] = [
     title: "Harbor Lights",
     artist: 1,
     genre: "Jazz",
-    durationSec: 233,
+    durationSec: 80,
     description:
       "Brushed drums and upright bass recorded live to two-inch tape.",
   },
@@ -93,7 +93,7 @@ const DEMO_SONGS: DemoSong[] = [
     title: "Glass Hours",
     artist: 2,
     genre: "Neo-soul",
-    durationSec: 241,
+    durationSec: 78,
     description: "Rhodes chords that never quite resolve into daylight.",
   },
   {
@@ -101,7 +101,7 @@ const DEMO_SONGS: DemoSong[] = [
     title: "Northbound",
     artist: 0,
     genre: "Indie",
-    durationSec: 198,
+    durationSec: 87,
     description: "Jangly telecaster choruses about leaving on time.",
   },
   {
@@ -109,7 +109,7 @@ const DEMO_SONGS: DemoSong[] = [
     title: "After Rain",
     artist: 1,
     genre: "Lo-fi",
-    durationSec: 171,
+    durationSec: 82,
     description: "Field rain recordings looped under dusty MPC drums.",
   },
   {
@@ -117,7 +117,7 @@ const DEMO_SONGS: DemoSong[] = [
     title: "Copper Sky",
     artist: 2,
     genre: "Folk",
-    durationSec: 226,
+    durationSec: 102,
     description: "One guitar, one voice, one take.",
   },
   {
@@ -125,7 +125,7 @@ const DEMO_SONGS: DemoSong[] = [
     title: "Low Tide",
     artist: 0,
     genre: "Ambient",
-    durationSec: 257,
+    durationSec: 84,
     description: "Sub-bass swell recorded at a tidal pool.",
   },
   {
@@ -133,7 +133,7 @@ const DEMO_SONGS: DemoSong[] = [
     title: "Signal Fire",
     artist: 1,
     genre: "Electronic",
-    durationSec: 209,
+    durationSec: 89,
     description: "Modular bleeps answering a distant shortwave radio.",
   },
   {
@@ -141,7 +141,7 @@ const DEMO_SONGS: DemoSong[] = [
     title: "Quiet Machines",
     artist: 2,
     genre: "Industrial",
-    durationSec: 245,
+    durationSec: 90,
     description: "Factory floor percussion, politely volume-limited.",
   },
 ];
@@ -220,9 +220,9 @@ export async function seedSonata(db: DbClient) {
           /* The demo sells midnight-drive from its creator's wallet. */
           creatorAccountId: artist.accountId,
           ownerAccountId: artist.accountId,
-          subAccount: `${song.tokenId}.masters.sonata.testnet`,
+          subAccount: `${song.tokenId}.masters-sonata.testnet`,
           coverUrl: `/demo/covers/${song.tokenId}.webp`,
-          audioUrl: `/demo/audio/${song.tokenId}.mp3`,
+          audioUrl: `/demo/audio/${song.tokenId}.m4a`,
           durationSec: song.durationSec,
           genre: song.genre,
           releaseYear: 2026,
@@ -335,7 +335,7 @@ export async function seedSonata(db: DbClient) {
   if (activeListing.length === 0) {
     await db.insert(sonataListing).values({
       tokenId: "midnight-drive",
-      sellerAccountId: "nadia.testnet",
+      sellerAccountId: "nadia-sonata.testnet",
       priceUsdc: "50000000",
       active: true,
       txHash: demoHash("sonata:demo:listing:midnight-drive"),

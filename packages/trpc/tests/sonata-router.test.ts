@@ -33,9 +33,9 @@ describe.skipIf(!runDb)("sonata router (seeded local database)", () => {
     expect(songs.some((song) => song.earnings30dUsdc !== "0")).toBe(true);
 
     const midnight = songs.find((song) => song.tokenId === "midnight-drive")!;
-    expect(midnight.ownerAccountId).toBe("nadia.testnet");
-    expect(midnight.creatorAccountId).toBe("nadia.testnet");
-    expect(midnight.subAccount).toBe("midnight-drive.masters.sonata.testnet");
+    expect(midnight.ownerAccountId).toBe("nadia-sonata.testnet");
+    expect(midnight.creatorAccountId).toBe("nadia-sonata.testnet");
+    expect(midnight.subAccount).toBe("midnight-drive.masters-sonata.testnet");
   });
 
   it("paginates songs.list deterministically", async () => {
@@ -51,8 +51,8 @@ describe.skipIf(!runDb)("sonata router (seeded local database)", () => {
   it("returns the master detail with owner, creator and recent payouts", async () => {
     const master = await c().sonata.songs.byId({ tokenId: "midnight-drive" });
 
-    expect(master.ownerAccountId).toBe("nadia.testnet");
-    expect(master.creatorAccountId).toBe("nadia.testnet");
+    expect(master.ownerAccountId).toBe("nadia-sonata.testnet");
+    expect(master.creatorAccountId).toBe("nadia-sonata.testnet");
     expect(master.recentPayouts.length).toBeGreaterThan(0);
     for (const payout of master.recentPayouts) {
       expect(payout.tokenId).toBe("midnight-drive");
@@ -74,7 +74,7 @@ describe.skipIf(!runDb)("sonata router (seeded local database)", () => {
     expect(listings).toHaveLength(1);
     expect(listings[0]).toMatchObject({
       tokenId: "midnight-drive",
-      sellerAccountId: "nadia.testnet",
+      sellerAccountId: "nadia-sonata.testnet",
       priceUsdc: "50000000",
       active: true,
     });
@@ -97,7 +97,7 @@ describe.skipIf(!runDb)("sonata router (seeded local database)", () => {
     expect(artist).toMatchObject({
       handle: "nadia",
       name: "Nadia Vale",
-      accountId: "nadia.testnet",
+      accountId: "nadia-sonata.testnet",
       songCount: 4,
     });
     /* Masters in mint order: midnight-drive, slow-arc, northbound, low-tide. */
@@ -141,10 +141,10 @@ describe.skipIf(!runDb)("sonata router (seeded local database)", () => {
 
   it("exposes the seeded listener pass", async () => {
     const pass = await c().sonata.pass.byAccount({
-      accountId: "listener.testnet",
+      accountId: "listener.sonata.testnet",
     });
 
-    expect(pass?.accountId).toBe("listener.testnet");
+    expect(pass?.accountId).toBe("listener.sonata.testnet");
     expect(pass?.priceUsdc).toBe("5000000");
     expect(pass?.expiresAt.getTime()).toBeGreaterThan(Date.now());
   });

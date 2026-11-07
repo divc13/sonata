@@ -32,21 +32,21 @@
 
 ## Components
 
-| Component | Responsibility | Technology |
-| --- | --- | --- |
-| `apps/web` | Player, catalog, artist dashboard, marketplace, pass checkout, audit | Next.js 16, React 19, tRPC, Drizzle, Better Auth |
-| `packages/db` | Schema, migrations, seed. Adds Sonata tables alongside existing auth tables. | Drizzle ORM, Postgres |
-| `packages/trpc` | Typed API. New `sonata` router; old JioSaavn routers removed from the app. | tRPC |
-| `packages/near` (new) | Wallet selector, contract clients, network config, formatting | `@near-wallet-selector/*`, `near-api-js` |
-| `packages/ui` | Existing design-system components. Reused unchanged. | shadcn/radix, Tailwind |
-| `contracts/master-nft` | NEP-171 collection, mint, transfer, royalty, song account creation | Rust, `near-sdk` |
-| `contracts/song-wallet` | Keyless account per song, owner-gated withdrawal | Rust, `near-sdk` |
-| `contracts/platform` | Pass NFT, pass sales, treasury, epoch settlement, reserve | Rust, `near-sdk` |
-| `contracts/market` | Fixed-price listings, 5% royalty, atomic sale | Rust, `near-sdk` |
-| `contracts/mock-usdc` | NEP-141 test stablecoin, 6 decimals | Rust, `near-sdk` |
-| `services/settlement` (new) | Consumes listen events, aggregates hours, builds epoch, submits to `platform`, publishes audit bundle | TypeScript, Node, `near-api-js` |
-| `services/indexer` (new) | Polls block and receipt outcomes (or NEAR Lake) for contract events into Postgres for history views | TypeScript, Node |
-| `scripts/` | Deploy, seed, settle, demo reset | TypeScript, shell |
+| Component                   | Responsibility                                                                                        | Technology                                       |
+| --------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `apps/web`                  | Player, catalog, artist dashboard, marketplace, pass checkout, audit                                  | Next.js 16, React 19, tRPC, Drizzle, Better Auth |
+| `packages/db`               | Schema, migrations, seed. Adds Sonata tables alongside existing auth tables.                          | Drizzle ORM, Postgres                            |
+| `packages/trpc`             | Typed API. New `sonata` router; old JioSaavn routers removed from the app.                            | tRPC                                             |
+| `packages/near` (new)       | Wallet selector, contract clients, network config, formatting                                         | `@near-wallet-selector/*`, `near-api-js`         |
+| `packages/ui`               | Existing design-system components. Reused unchanged.                                                  | shadcn/radix, Tailwind                           |
+| `contracts/master-nft`      | NEP-171 collection, mint, transfer, royalty, song account creation                                    | Rust, `near-sdk`                                 |
+| `contracts/song-wallet`     | Keyless account per song, owner-gated withdrawal                                                      | Rust, `near-sdk`                                 |
+| `contracts/platform`        | Pass NFT, pass sales, treasury, epoch settlement, reserve                                             | Rust, `near-sdk`                                 |
+| `contracts/market`          | Fixed-price listings, 5% royalty, atomic sale                                                         | Rust, `near-sdk`                                 |
+| `contracts/mock-usdc`       | NEP-141 test stablecoin, 6 decimals                                                                   | Rust, `near-sdk`                                 |
+| `services/settlement` (new) | Consumes listen events, aggregates hours, builds epoch, submits to `platform`, publishes audit bundle | TypeScript, Node, `near-api-js`                  |
+| `services/indexer` (new)    | Polls block and receipt outcomes (or NEAR Lake) for contract events into Postgres for history views   | TypeScript, Node                                 |
+| `scripts/`                  | Deploy, seed, settle, demo reset                                                                      | TypeScript, shell                                |
 
 ## Repo layout
 
@@ -99,7 +99,7 @@ sonata/
 
 1. Listener signs `ft_transfer_call(platform, 5_000_000, "pass")` on mock USDC.
 2. `platform.ft_on_transfer` mints a non-transferable pass NFT with `expires_at = max(now, current)
-   + 30 days`, stores the expiry, returns 0 to accept the funds.
+   - 30 days`, stores the expiry, returns 0 to accept the funds.
 3. The indexer writes `sonata_pass`. The web app invalidates the pass query.
 4. The player checks pass status from the backend, which reads the contract view and caches for 30s.
 
@@ -138,14 +138,14 @@ sonata/
 
 ## Trust boundaries
 
-| Boundary | Trusted | Untrusted | Enforcement |
-| --- | --- | --- | --- |
-| Browser to API | Server session | Client input | Auth, zod validation, rate limits |
-| API to chain | Wallet signature | RPC responses | Verify finality, use multiple RPCs for demo |
-| Oracle to platform | Oracle key | Listen events | Only oracle may settle; audit bundle published |
-| Song account to owner | Master NFT contract | Caller | `nft_token` ownership check in callback |
-| Market to royalty | `nft_payout` view | Seller-supplied price | Royalty computed on chain |
-| Platform to reserve | Contract balance | Owner | Reserve floor check in withdraw |
+| Boundary              | Trusted             | Untrusted             | Enforcement                                    |
+| --------------------- | ------------------- | --------------------- | ---------------------------------------------- |
+| Browser to API        | Server session      | Client input          | Auth, zod validation, rate limits              |
+| API to chain          | Wallet signature    | RPC responses         | Verify finality, use multiple RPCs for demo    |
+| Oracle to platform    | Oracle key          | Listen events         | Only oracle may settle; audit bundle published |
+| Song account to owner | Master NFT contract | Caller                | `nft_token` ownership check in callback        |
+| Market to royalty     | `nft_payout` view   | Seller-supplied price | Royalty computed on chain                      |
+| Platform to reserve   | Contract balance    | Owner                 | Reserve floor check in withdraw                |
 
 The weakest link is the oracle. It is a single signer in v1. The mitigation is transparency: every
 epoch publishes the raw listen bundle and a hash, and the contract stores the hash. Judges and
@@ -157,25 +157,25 @@ artists can recompute. A future version can use a threshold committee or a zk pr
 - RPC: `https://rpc.testnet.near.org` (fallback `https://testnet.rpc.near.org`).
 - Wallet: NEAR Wallet Selector with MyNearWallet, Meteor, and HERE wallets. For the demo, a
   burner key in `.env.local` is allowed for the settlement script only, never in the browser.
-- USDC: `usdc.sonata.testnet`, 6 decimals, mintable by the demo admin. Real USDC is production
+- USDC: `usdc-sonata.testnet`, 6 decimals, mintable by the demo admin. Real USDC is production
   roadmap, not v1.
 
 ## Data model additions
 
 All new tables use the `sonata_` prefix to stay isolated in the shared database.
 
-| Table | Key columns |
-| --- | --- |
-| `sonata_song` | `token_id` PK, `title`, `artist_name`, `creator_id`, `owner_id`, `sub_account`, `cover_url`, `audio_url`, `duration_sec`, `created_at` |
-| `sonata_pass` | `id`, `account_id`, `token_id`, `expires_at`, `purchased_at`, `tx_hash` |
-| `sonata_listen_event` | `id`, `account_id`, `song_id`, `session_id`, `position_ms`, `created_at`, `verified` |
-| `sonata_listen_hour` | `account_id`, `song_id`, `day`, `hours`, `epoch_id` |
-| `sonata_epoch` | `id`, `started_at`, `closed_at`, `total_hours`, `effective_rate`, `total_paid`, `listen_root`, `tx_hash` |
-| `sonata_payout` | `epoch_id`, `song_id`, `hours`, `amount`, `tx_hash` |
-| `sonata_listing` | `song_id`, `seller`, `price`, `status`, `created_at`, `tx_hash` |
-| `sonata_sale` | `song_id`, `seller`, `buyer`, `price`, `royalty`, `tx_hash`, `created_at` |
-| `sonata_ownership` | `song_id`, `from`, `to`, `price`, `tx_hash`, `created_at` |
-| `sonata_withdrawal` | `song_id`, `owner`, `amount`, `tx_hash`, `created_at` |
+| Table                 | Key columns                                                                                                                            |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `sonata_song`         | `token_id` PK, `title`, `artist_name`, `creator_id`, `owner_id`, `sub_account`, `cover_url`, `audio_url`, `duration_sec`, `created_at` |
+| `sonata_pass`         | `id`, `account_id`, `token_id`, `expires_at`, `purchased_at`, `tx_hash`                                                                |
+| `sonata_listen_event` | `id`, `account_id`, `song_id`, `session_id`, `position_ms`, `created_at`, `verified`                                                   |
+| `sonata_listen_hour`  | `account_id`, `song_id`, `day`, `hours`, `epoch_id`                                                                                    |
+| `sonata_epoch`        | `id`, `started_at`, `closed_at`, `total_hours`, `effective_rate`, `total_paid`, `listen_root`, `tx_hash`                               |
+| `sonata_payout`       | `epoch_id`, `song_id`, `hours`, `amount`, `tx_hash`                                                                                    |
+| `sonata_listing`      | `song_id`, `seller`, `price`, `status`, `created_at`, `tx_hash`                                                                        |
+| `sonata_sale`         | `song_id`, `seller`, `buyer`, `price`, `royalty`, `tx_hash`, `created_at`                                                              |
+| `sonata_ownership`    | `song_id`, `from`, `to`, `price`, `tx_hash`, `created_at`                                                                              |
+| `sonata_withdrawal`   | `song_id`, `owner`, `amount`, `tx_hash`, `created_at`                                                                                  |
 
 Existing auth tables (`user`, `better_auth_*`, `infinitunes_passkey`) are reused. Existing catalog
 tables from infinitunes are not used by Sonata and can be left dormant or removed in a later cleanup.
