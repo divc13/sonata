@@ -71,14 +71,17 @@ describe.skipIf(!runDb)("sonata router (seeded local database)", () => {
   it("returns the active midnight-drive listing at $50.00", async () => {
     const listings = await c().sonata.market.listings({});
 
-    expect(listings).toHaveLength(1);
-    expect(listings[0]).toMatchObject({
+    expect(listings).toHaveLength(5);
+    const midnight = listings.find(
+      (listing) => listing.tokenId === "midnight-drive",
+    );
+    expect(midnight).toMatchObject({
       tokenId: "midnight-drive",
       sellerAccountId: "nadia-sonata.testnet",
       priceUsdc: "50000000",
       active: true,
     });
-    expect(listings[0].song.title).toBe("Midnight Drive");
+    expect(midnight?.song.title).toBe("Midnight Drive");
 
     const byToken = await c().sonata.market.listingByToken({
       tokenId: "midnight-drive",
@@ -154,7 +157,7 @@ describe.skipIf(!runDb)("sonata router (seeded local database)", () => {
 
     expect(overview).toMatchObject({
       songsCount: 12,
-      activeListings: 1,
+      activeListings: 5,
     });
     expect(Number(overview.totalPaidUsdc)).toBeGreaterThan(0);
     /* Every demo epoch is seeded with whole hours of verified listening. */

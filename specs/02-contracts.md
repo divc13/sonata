@@ -692,7 +692,7 @@ lets the seller set the royalty. The remaining 95% goes to the seller.
 
 ```json
 {"standard":"sonata","version":"1.0.0","event":"listing_created","data":{"token_id":"midnight-drive","seller":"alice.testnet","price":"50000000"}}
-{"standard":"sonata","version":"1.0.0","event":"sale","data":{"token_id":"midnight-drive","seller":"alice.testnet","buyer":"collector.testnet","price":"50000000","royalty":"2500000","tx":"..."}}
+{"standard":"sonata","version":"1.0.0","event":"sale","data":{"token_id":"midnight-drive","seller":"alice.testnet","buyer":"collector.sonata.testnet","price":"50000000","royalty":"2500000","tx":"..."}}
 ```
 
 ---

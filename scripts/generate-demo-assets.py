@@ -48,17 +48,17 @@ ARTISTS = {
     "nadia": {
         "artistName": "Nadia Vale",
         "artistHandle": "@nadia",
-        "artistAccountId": "nadia.testnet",
+        "artistAccountId": "nadia-sonata.testnet",
     },
     "kofi": {
         "artistName": "Kofi Mensah",
         "artistHandle": "@kofi",
-        "artistAccountId": "kofi.testnet",
+        "artistAccountId": "kofi-sonata.testnet",
     },
     "lena": {
         "artistName": "Lena Ortiz",
         "artistHandle": "@lena",
-        "artistAccountId": "lena.testnet",
+        "artistAccountId": "lena-sonata.testnet",
     },
 }
 

@@ -323,22 +323,37 @@ export async function seedSonata(db: DbClient) {
   }
 
   /* --------------------------------------------------------------------- */
-  /* 4. The midnight-drive listing at $50.00 (specs/06-demo.md scene 4)      */
+  /* 4. Active resale listings (specs/06-demo.md masters table)             */
   /* --------------------------------------------------------------------- */
 
-  const activeListing = await db
-    .select({ id: sonataListing.id })
-    .from(sonataListing)
-    .where(sql`${sonataListing.tokenId} = 'midnight-drive' and active`)
-    .limit(1);
+  const DEMO_LISTINGS = [
+    { tokenId: "midnight-drive", priceUsdc: "50000000" },
+    { tokenId: "velvet-static", priceUsdc: "35000000" },
+    { tokenId: "harbor-lights", priceUsdc: "80000000" },
+    { tokenId: "after-rain", priceUsdc: "20000000" },
+    { tokenId: "signal-fire", priceUsdc: "65000000" },
+  ];
 
-  if (activeListing.length === 0) {
-    await db.insert(sonataListing).values({
-      tokenId: "midnight-drive",
-      sellerAccountId: "nadia-sonata.testnet",
-      priceUsdc: "50000000",
-      active: true,
-      txHash: demoHash("sonata:demo:listing:midnight-drive"),
-    });
+  for (const listing of DEMO_LISTINGS) {
+    const song = DEMO_SONGS.find((entry) => entry.tokenId === listing.tokenId);
+    if (!song) continue;
+
+    const activeListing = await db
+      .select({ id: sonataListing.id })
+      .from(sonataListing)
+      .where(
+        sql`${sonataListing.tokenId} = ${listing.tokenId} and ${sonataListing.active}`,
+      )
+      .limit(1);
+
+    if (activeListing.length === 0) {
+      await db.insert(sonataListing).values({
+        tokenId: listing.tokenId,
+        sellerAccountId: DEMO_ARTISTS[song.artist].accountId,
+        priceUsdc: listing.priceUsdc,
+        active: true,
+        txHash: demoHash(`sonata:demo:listing:${listing.tokenId}`),
+      });
+    }
   }
 }

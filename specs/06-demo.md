@@ -22,10 +22,10 @@ Commit `scripts/seed-demo.ts`. It is idempotent and can reset the demo.
 
 ### Listeners
 
-| Account                   | Purpose                                         |
-| ------------------------- | ----------------------------------------------- |
-| `listener.sonata.testnet` | Buys the pass, listens, demonstrates the player |
-| `collector.testnet`       | Buys the master in the resale scene             |
+| Account                    | Purpose                                         |
+| -------------------------- | ----------------------------------------------- |
+| `listener.sonata.testnet`  | Buys the pass, listens, demonstrates the player |
+| `collector.sonata.testnet` | Buys the master in the resale scene             |
 
 The seller in the resale scene is the artist account `nadia-sonata.testnet`, which is also the creator. After
 the sale, `nadia-sonata.testnet` is the old owner used for the failed withdrawal.
@@ -165,13 +165,13 @@ Open `/market`. Show `midnight-drive` listed at $50.00 with "Includes $128.40 in
 > "The master is for sale. The price includes the balance in the song account, because the account
 > goes with the master."
 
-Connect as `collector.testnet`. Click `Buy master`. Confirm the USDC payment. The success receipt
+Connect as `collector.sonata.testnet`. Click `Buy master`. Confirm the USDC payment. The success receipt
 shows the NFT, the creator royalty ($2.50), and the seller proceeds ($47.50).
 
 > "The creator gets 5% forever. The seller gets the rest. And the buyer gets the master, the
 > account, and everything in it."
 
-Open `/master/midnight-drive` as the collector. The owner badge says `collector.testnet`. Click
+Open `/master/midnight-drive` as the collector. The owner badge says `collector.sonata.testnet`. Click
 `Withdraw` and withdraw the balance.
 
 > "The new owner can withdraw immediately."
