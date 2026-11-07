@@ -35,6 +35,19 @@ export function formatUsdMicro2(micro: string): string {
 }
 
 /**
+ * A song-account balance as displayed ("Includes $X.XX"). `null` means the
+ * chain read failed, so callers omit the line instead of claiming `$0.00`.
+ */
+export function formatIncludedBalance(
+  micro: string | null | undefined,
+): string | null {
+  if (micro === null || micro === undefined) return null;
+  const trimmed = micro.trim();
+  if (!/^\d+$/.test(trimmed)) return null;
+  return formatUsdMicro2(trimmed);
+}
+
+/**
  * A user-typed dollar amount (`"50"`, `"50.00"`, `"$1,250.50"`) to a positive
  * micro-USDC integer string. Prices carry at most two decimal places; returns
  * `null` for anything that is not a positive dollar amount.

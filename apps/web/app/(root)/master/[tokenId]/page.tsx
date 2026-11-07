@@ -21,7 +21,12 @@ import { ReceiptRow } from "~/components/sonata/receipt-row";
 import { Stat } from "~/components/sonata/stat";
 import { getErrorCode } from "~/lib/error-code";
 import { pageMetadata } from "~/lib/metadata";
-import { formatUsdMicro2, selectListingForToken } from "~/lib/sonata/market";
+import { readSongAccountBalance } from "~/lib/sonata/balances";
+import {
+  formatIncludedBalance,
+  formatUsdMicro2,
+  selectListingForToken,
+} from "~/lib/sonata/market";
 import { api } from "~/lib/trpc/server";
 
 type MasterPageProps = { params: Promise<{ tokenId: string }> };
@@ -77,6 +82,9 @@ export default async function MasterPage({ params }: MasterPageProps) {
   ]);
 
   if (!master) notFound();
+
+  const songBalanceMicro = await readSongAccountBalance(master.subAccount);
+  const included = formatIncludedBalance(songBalanceMicro);
 
   const listing = selectListingForToken(listingRow, master.tokenId);
   const listed = listing !== null;
@@ -417,6 +425,20 @@ export default async function MasterPage({ params }: MasterPageProps) {
                 <span className="font-heading text-2xl font-bold tabular-nums">
                   {formatUsdMicro2(listing.priceUsdc)}
                 </span>
+              </div>
+
+              <div className="flex flex-col gap-1 rounded-lg bg-fill/60 px-3 py-2.5">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-sm font-medium">Includes</span>
+                  <span className="font-heading text-base font-semibold tabular-nums">
+                    {included ?? "—"}
+                  </span>
+                </div>
+                <p className="text-xs leading-5 text-muted-foreground">
+                  {included
+                    ? "Read from the song account"
+                    : "The song account balance is unavailable right now."}
+                </p>
               </div>
 
               <dl className="flex flex-col gap-2 border-y border-border/60 py-3 text-sm">
