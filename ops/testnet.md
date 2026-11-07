@@ -46,6 +46,10 @@ for scripts.
 | `platform`                        | `platform-sonata.testnet`                                | `6TtCMN2aQ5jQ2gSXw2g7TVLM21Wgo2RPNNkqwhgT5nV4` |
 | `market`                          | `market-sonata.testnet`                                  | `A3fNoVnQpBhkC4hDBBzcu8RnZSgmotS5thPpAXzr3j8V` |
 
+Deployed code hashes: platform `GSvQDjqoVTrnGPMtdXW2dPoCvZJ2pe4xk1zkaD62s44b`, market
+`7xxARpMzwxs2P59ki6A1eqou7o3i8cnMzwhckPGZnFJz`, master collection
+`BEUYq18tdtJkRr1adcmomToj9YRFHW9zjp6mSPJ6sTYK`.
+
 `song-wallet` global code hash:
 `2iaWAuzRDNsNn65eVCh8qwNboRdrrFVgtGv7o4EmCMuS`,
 which is base58(sha256(`contracts/target/wasm32-unknown-unknown/release/song_wallet.wasm`)).
