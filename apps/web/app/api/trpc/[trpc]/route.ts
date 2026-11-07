@@ -4,6 +4,7 @@ import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 
 import { getSession } from "~/lib/auth";
 import { cachedApi } from "~/lib/cached-api";
+import { sonataSettlementService } from "~/lib/sonata/settlement";
 
 function handler(req: Request) {
   return fetchRequestHandler({
@@ -14,6 +15,7 @@ function handler(req: Request) {
       db,
       session: await getSession(),
       catalogApi: cachedApi,
+      sonataSettlement: sonataSettlementService,
     }),
   });
 }

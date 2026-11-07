@@ -358,8 +358,14 @@ export const sonataListenEvent = pgTable(
     accountId: text("account_id").notNull(),
     tokenId: text("token_id").notNull(),
     sessionId: text("session_id").notNull(),
+    /** Idempotency key supplied by the player; the dedupe boundary. */
+    clientEventId: text("client_event_id"),
     positionMs: integer("position_ms").notNull(),
     playedMs: integer("played_ms").notNull(),
+    /** Verified seconds credited by this heartbeat (1..60). */
+    seconds: integer("seconds").notNull().default(0),
+    /** Heartbeat start, not the row insert time: aggregation uses this. */
+    startedAt: timestamp("started_at", { mode: "date" }).defaultNow().notNull(),
     verified: boolean("verified").notNull().default(false),
     reason: text("reason"),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
@@ -368,6 +374,7 @@ export const sonataListenEvent = pgTable(
     index("sonata_listen_event_account_idx").on(table.accountId),
     index("sonata_listen_event_token_idx").on(table.tokenId),
     index("sonata_listen_event_session_idx").on(table.sessionId),
+    uniqueIndex("sonata_listen_event_client_unique").on(table.clientEventId),
   ],
 );
 

@@ -57,6 +57,8 @@ export type Epoch = {
   totalPaidUsdc: string;
   listenRoot: string;
   entriesCount: number;
+  /** `"constant"` at R, `"pro-rata"` when the balance cannot fund R. */
+  mode: "constant" | "pro-rata";
 };
 
 /** The non-transferable pass NFT owned by a listener. */

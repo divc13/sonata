@@ -5,6 +5,7 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 
 import { api } from "./lib/api";
+import type { SonataSettlementService } from "./router/sonata/service";
 
 type AuthSession = NonNullable<Awaited<ReturnType<Auth["api"]["getSession"]>>>;
 
@@ -25,6 +26,11 @@ export type TRPCContext = {
    * the sonata router uses the process-wide demo chain; tests inject a fake.
    */
   sonataChain?: SonataChain;
+  /**
+   * Listen ingest + epoch settlement service. The web adapter injects the
+   * server-only implementation; tests inject a fake.
+   */
+  sonataSettlement?: SonataSettlementService;
   /**
    * A loaded session, or a thunk. The RSC caller passes `getSession` so
    * public procedures skip the lookup; the HTTP adapter passes the value.
