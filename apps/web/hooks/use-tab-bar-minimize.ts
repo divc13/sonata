@@ -28,10 +28,12 @@ function hasKeyboardFocusWithin(bar: Element | null): boolean {
  * player into the freed row; 24px up, the top of the page, a tap on the
  * minimized bar or keyboard focus entering it expands it, and it stays
  * expanded while keyboard focus is inside it (the hidden tabs are otherwise
- * unreachable). Sets `html[data-tab-min="true"]`, which
- * `styles/glass.css` keys the `tabbar` and `player` roles on. A no-op from
- * 768px up. Call once from the tab bar component; no React state, no
- * per-frame work beyond one passive scroll listener.
+ * unreachable). A route with no current tab (a detail page, pass, audit) keeps
+ * the bar expanded, because the collapsed pill would be empty. Sets
+ * `html[data-tab-min="true"]`, which `styles/glass.css` keys the `tabbar` and
+ * `player` roles on. A no-op from 768px up. Call once from the tab bar
+ * component; no React state, no per-frame work beyond one passive scroll
+ * listener.
  */
 export function useTabBarMinimize() {
   useEffect(() => {
@@ -40,9 +42,18 @@ export function useTabBarMinimize() {
     let state: TabMinState = { ...INITIAL_TAB_MIN, lastY: window.scrollY };
 
     const commit = (requested: TabMinState) => {
+      // Only a tab that is `aria-current` survives the collapse; a detail,
+      // pass or audit route has none, and collapsing there leaves an empty pill.
+      const hasCurrentTab = () =>
+        Boolean(
+          document.querySelector(
+            `${TAB_BAR} [aria-current]:not([aria-current="false"])`,
+          ),
+        );
       const next =
         requested.minimized &&
-        hasKeyboardFocusWithin(document.querySelector(TAB_BAR))
+        (!hasCurrentTab() ||
+          hasKeyboardFocusWithin(document.querySelector(TAB_BAR)))
           ? { ...requested, minimized: false }
           : requested;
       state = next;
