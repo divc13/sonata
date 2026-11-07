@@ -19,9 +19,14 @@ export type SonataNetwork = typeof SONATA_NETWORK;
 const withDefault = (value: string | undefined, fallback: string) =>
   value && value.trim().length > 0 ? value.trim() : fallback;
 
+/**
+ * Server-side RPC endpoint. `rpc.testnet.near.org` now answers bursts of view
+ * calls with 429; FastNear's testnet endpoint is the default. Override with
+ * `SONATA_NEAR_RPC_URL` (never expose it to the browser).
+ */
 export const NEAR_RPC_URL = withDefault(
   process.env.SONATA_NEAR_RPC_URL,
-  "https://rpc.testnet.near.org",
+  "https://rpc.testnet.fastnear.com",
 );
 
 /** NEP-141 mock USDC: 6 decimals, mintable by the demo admin (testnet only). */

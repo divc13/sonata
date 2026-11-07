@@ -83,11 +83,10 @@ As of 2026-11-08:
 - Every song account currently holds **0 USDC**, because no settlement has
   funded it. A live artist withdraw would fail with `Nothing to withdraw`
   until the account is funded.
-- Postgres is seeded with epochs 1–8, so the app's next displayed epoch is 9.
-  The contract only accepts its own `next_epoch_id` (1), so the `/audit`
-  "Settle epoch 9" button and
-  `bun run scripts/settle-demo.ts 9` are rejected with `Epoch id mismatch`
-  on this exact chain/database pair.
+- Postgres is seeded with demo epochs at negative ids (`-1`…`-8`), so the
+  `/audit` button reads the chain and offers `Settle epoch 1` — the first real
+  epoch, because the contract initializes `next_epoch_id = 1` and has no
+  epoch 0. `bun run scripts/settle-demo.ts 1` settles that same id.
 - The demo script explains the two honest options: record the seeded audit
   history and show the command, or use a fresh chain + fresh database for a
   live settlement.

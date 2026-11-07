@@ -29,7 +29,7 @@ WASM_DIR="$ROOT/contracts/target/wasm32-unknown-unknown/release"
 PLATFORM_WASM="$WASM_DIR/platform.wasm"
 MARKET_WASM="$WASM_DIR/market.wasm"
 NETWORK="${NEAR_NETWORK:-testnet}"
-RPC_URL="${SONATA_RPC_URL:-${NEAR_RPC_URL:-https://rpc.testnet.near.org}}"
+RPC_URL="${SONATA_RPC_URL:-${NEAR_RPC_URL:-https://rpc.testnet.fastnear.com}}"
 SIGN_WITH="${SIGN_WITH:-sign-with-keychain}"
 
 # Discriminating demo parameters (specs/02-contracts.md, specs/06-demo.md).

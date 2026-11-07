@@ -21,9 +21,10 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT/ops/testnet.env"
 
 NETWORK="${NEAR_NETWORK:-testnet}"
-# rpc.testnet.near.org throttles bursts of view calls; point this at
+# rpc.testnet.near.org now answers bursts of view calls with 429; FastNear is
+# the default. Override with SONATA_RPC_URL/NEAR_RPC_URL, e.g.
 # https://archival-rpc.testnet.fastnear.com/ when re-running in a loop.
-RPC_URL="${SONATA_RPC_URL:-${NEAR_RPC_URL:-https://rpc.testnet.near.org}}"
+RPC_URL="${SONATA_RPC_URL:-${NEAR_RPC_URL:-https://rpc.testnet.fastnear.com}}"
 WASM_DIR="$ROOT/contracts/target/wasm32-unknown-unknown/release"
 CATALOGUE="$ROOT/scripts/demo-catalogue.json"
 

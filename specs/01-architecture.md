@@ -154,7 +154,8 @@ artists can recompute. A future version can use a threshold committee or a zk pr
 ## Chain and network
 
 - Network: NEAR testnet.
-- RPC: `https://rpc.testnet.near.org` (fallback `https://testnet.rpc.near.org`).
+- RPC: `https://rpc.testnet.fastnear.com` (server-side; `rpc.testnet.near.org` now returns
+  `429` for view-call bursts). Override with `SONATA_NEAR_RPC_URL`.
 - Wallet: NEAR Wallet Selector with MyNearWallet, Meteor, and HERE wallets. For the demo, a
   burner key in `.env.local` is allowed for the settlement script only, never in the browser.
 - USDC: `usdc-sonata.testnet`, 6 decimals, mintable by the demo admin. Real USDC is production

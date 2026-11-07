@@ -27,7 +27,7 @@ source "$ROOT/ops/testnet.env"
 
 CATALOGUE="$ROOT/scripts/demo-catalogue.json"
 NETWORK="${NEAR_NETWORK:-testnet}"
-RPC_URL="${SONATA_RPC_URL:-${NEAR_RPC_URL:-https://rpc.testnet.near.org}}"
+RPC_URL="${SONATA_RPC_URL:-${NEAR_RPC_URL:-https://rpc.testnet.fastnear.com}}"
 SIGN_WITH="${SIGN_WITH:-sign-with-keychain}"
 
 MINT_DEPOSIT="${MINT_DEPOSIT:-0.1NEAR}"

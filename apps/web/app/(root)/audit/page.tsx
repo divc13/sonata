@@ -136,8 +136,8 @@ async function AuditContent() {
             </h2>
             <p className="text-sm leading-6 text-muted-foreground">
               Seeded demo history, shown as Demo 1–Demo 8. Real contract
-              settlements follow the chain's next epoch id and are listed
-              alongside it.
+              settlements begin at epoch 1 — the chain initializes the first
+              settlement id and has no epoch 0 — and are listed alongside it.
             </p>
           </div>
           <SettleEpochAction nextEpochId={nextId} />

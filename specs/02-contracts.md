@@ -426,6 +426,9 @@ impl Contract {
         one_month_reserve: U128,
     ) -> Self;
 
+    // `new` initializes `next_epoch_id = 1`: the first real settlement is
+    // epoch 1 and there is no epoch 0. Seeded demo history uses negative ids.
+
     // Pass NFT (NEP-171, non-transferable)
     pub fn ft_on_transfer(&mut self, sender_id: AccountId, amount: U128, msg: String) -> String;
     pub fn nft_token(&self, token_id: TokenId) -> Option<JsonPass>;

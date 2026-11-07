@@ -42,12 +42,13 @@ export function sumMicro(amounts: Iterable<string>): string {
 }
 
 /**
- * The next epoch the oracle may settle: `max(chain id) + 1`, or 0 when no
- * chain epoch exists yet.
+ * The next epoch derived from the mirrored rows: `max(non-negative id) + 1`.
+ * The chain is authoritative (the audit page reads `next_epoch_id`); this is
+ * only the fallback when that read fails. Real chain epochs start at `1`
+ * (`platform.new` initializes `next_epoch_id = 1`).
  *
  * Seeded demo history is stored with negative ids (see `sonata-seed.ts`), so
- * those rows never count here: the contract's first real epoch is `0`, and
- * treating `-1` as history would settle an id the chain has never seen.
+ * those rows never count here and can never occupy a chain id.
  */
 export function nextEpochId(epochs: readonly { id: number }[]): number {
   let max = -1;
@@ -57,7 +58,7 @@ export function nextEpochId(epochs: readonly { id: number }[]): number {
   return max + 1;
 }
 
-/** Seeded demo history uses negative ids; chain epochs start at 0. */
+/** Seeded demo history uses negative ids; real chain epochs start at 1. */
 export function isDemoEpochId(id: number): boolean {
   return id < 0;
 }
