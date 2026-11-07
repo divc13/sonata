@@ -1,13 +1,20 @@
-import { DEMO_ACCOUNT_IDS, type DemoRole } from "@infinitunes/near";
+import type { DemoRole } from "@infinitunes/near";
 import type { SonataListingWithSong } from "@infinitunes/types";
 
 /**
  * Market display helpers. Money is always micro-USDC text (6 decimals), so
  * conversion stays in `BigInt` and never touches a float.
+ *
+ * This module is imported by client components, so it deliberately has no
+ * runtime dependency on `@infinitunes/near` (which pulls chain SDK code).
  */
 
 const MICRO_PER_USD = 1_000_000n;
 const MICRO_PER_CENT = 10_000n;
+
+/** Demo owner accounts, mirrored from `@infinitunes/near` config. */
+const NADIA_ACCOUNT = "nadia-sonata.testnet";
+const COLLECTOR_ACCOUNT = "collector.sonata.testnet";
 
 /** `"50000000"` micro-USDC -> `"$50.00"`, rounding dust to whole cents. */
 export function formatUsdMicro2(micro: string): string {
@@ -45,8 +52,8 @@ export function usdToMicroUsdc(input: string): string | null {
 
 /** The demo signer that can act as this master's owner, when there is one. */
 export function demoRoleForOwner(accountId: string): DemoRole | null {
-  if (accountId === DEMO_ACCOUNT_IDS.nadia) return "nadia";
-  if (accountId === DEMO_ACCOUNT_IDS.collector) return "collector";
+  if (accountId === NADIA_ACCOUNT) return "nadia";
+  if (accountId === COLLECTOR_ACCOUNT) return "collector";
   return null;
 }
 
