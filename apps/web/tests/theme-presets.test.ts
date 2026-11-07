@@ -44,12 +44,10 @@ describe("spot colour presets", () => {
     }
   });
 
-  it("keep a neutral as the stylesheet default, not a colour", () => {
-    expect(themes.find((theme) => theme.hex === DEFAULT_ACCENT_HEX)?.name).toBe(
-      "neutral",
-    );
+  it("ship Sonata Amber as the stylesheet default", () => {
+    expect(DEFAULT_ACCENT_HEX).toBe("#c8963e");
     expect(deriveAccentTokens(DEFAULT_ACCENT_HEX).light.primary).toMatch(
-      /^oklch\([\d.]+ 0 /,
+      /^oklch\([\d.]+ [\d.]+ /,
     );
   });
 

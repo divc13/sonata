@@ -20,5 +20,5 @@ export const themes = [
 
 export type ThemePreset = (typeof themes)[number];
 
-/** The neutral base of the stylesheet's default primary tokens (`styles/globals.css`). */
-export const DEFAULT_ACCENT_HEX = "#171717";
+/** Sonata Amber: the stylesheet's default primary tokens (`styles/globals.css`). */
+export const DEFAULT_ACCENT_HEX = "#c8963e";

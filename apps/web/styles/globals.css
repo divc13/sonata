@@ -164,12 +164,12 @@ div:has(img[data-loaded]) > [data-slot="skeleton"] {
 :root {
   color-scheme: light;
 
-  --light-primary: oklch(0.205 0 89.9);
+  --light-primary: oklch(0.547 0.113 78.6);
   --light-primary-foreground: oklch(1 0 0);
-  --light-accent: oklch(0.94 0 89.9);
-  --dark-primary: oklch(0.967 0.001 286.4);
+  --light-accent: oklch(0.94 0.033 78.6);
+  --dark-primary: oklch(0.705 0.119 78.6);
   --dark-primary-foreground: oklch(0.18 0 0);
-  --dark-accent: oklch(0.3 0 286.4);
+  --dark-accent: oklch(0.3 0.035 78.6);
 
   --background: #f5f5f7;
   --foreground: #1d1d1f;
