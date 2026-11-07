@@ -69,6 +69,15 @@ export const DEMO_ACCOUNT_IDS = {
 /** YoctoNEAR attached to NEP-141 `ft_transfer_call` (receiver-attached calls). */
 export const ONE_YOCTO = 1n;
 
+/**
+ * Gas a wallet must attach to NEP-141 `ft_transfer_call` (pass purchase,
+ * market buy). `mock-usdc` forwards 120 Tgas to the receiver's
+ * `ft_on_transfer` (enough for the market's 50 + 40 Tgas subcalls) plus
+ * 15 Tgas to its own resolver, so 200 Tgas leaves room for the token logic.
+ * A plain `ft_transfer` only needs the 25 Tgas the wallet attaches itself.
+ */
+export const FT_TRANSFER_CALL_GAS = 200_000_000_000_000n;
+
 /** 100 TGas covers the cross-contract pass, sale and withdrawal callbacks. */
 export const DEFAULT_FUNCTION_CALL_GAS = 100_000_000_000_000n;
 

@@ -85,6 +85,27 @@ export async function cachedOwnerAccountId(
   return song?.ownerAccountId ?? null;
 }
 
+/**
+ * Cached owner plus the song wallet the master currently pays into. The
+ * rescue migration replaces a broken wallet by updating this row and the
+ * on-chain `platform.song_accounts` mapping together.
+ */
+export async function cachedSongWallet(
+  db: DbClient,
+  tokenId: string,
+): Promise<{ ownerAccountId: string; subAccount: string } | null> {
+  const [song] = await db
+    .select({
+      ownerAccountId: sonataSong.ownerAccountId,
+      subAccount: sonataSong.subAccount,
+    })
+    .from(sonataSong)
+    .where(eq(sonataSong.tokenId, tokenId))
+    .limit(1);
+
+  return song ?? null;
+}
+
 /** Buy side: close the active listing, move ownership, record the sale. */
 export async function syncMarketSale(
   db: DbClient,

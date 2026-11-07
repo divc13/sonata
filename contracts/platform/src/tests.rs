@@ -423,6 +423,40 @@ fn register_song_needs_near_for_storage() {
     contract.register_song("alpha".to_string(), song_account("alpha"));
 }
 
+/// The rescue hook replaces a broken wallet without touching ownership or
+/// money: it only rewrites the `song_accounts` mapping.
+#[test]
+fn set_song_account_migrates_the_mapping_and_emits_an_event() {
+    let mut contract = new_contract();
+    register(&mut contract, "midnight-drive", "midnight-drive");
+    let stats_before = contract.get_stats();
+
+    let replacement: AccountId = "midnight-drive-fixed.masters.sonata.testnet"
+        .parse()
+        .unwrap();
+    testing_env!(context(accounts(0), NOW).build());
+    contract.set_song_account("midnight-drive".to_string(), replacement.clone());
+
+    assert_eq!(
+        contract.get_song_account("midnight-drive".to_string()),
+        Some(replacement)
+    );
+    assert_eq!(contract.get_stats(), stats_before);
+    let logs = get_logs();
+    assert!(logs
+        .iter()
+        .any(|log| log.contains(r#""event":"song_account_changed""#)
+            && log.contains("midnight-drive-fixed.masters.sonata.testnet")));
+}
+
+#[test]
+#[should_panic(expected = "Only owner")]
+fn set_song_account_is_owner_only() {
+    let mut contract = new_contract();
+    testing_env!(context(accounts(3), NOW).build());
+    contract.set_song_account("alpha".to_string(), song_account("alpha"));
+}
+
 // ----------------------------------------------------------------------
 // Pure payout math
 // ----------------------------------------------------------------------

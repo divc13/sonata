@@ -20,7 +20,35 @@ type Captured = {
   args: unknown[];
 };
 
-function fakeChain(overrides: Partial<SonataChain> = {}) {
+/** Cached owner the withdrawal pre-check reads (defaults to the nadia demo). */
+const NADIA_ACCOUNT_ID = "nadia-sonata.testnet";
+
+/**
+ * Minimal drizzle stand-in for the ownership pre-check:
+ * `db.select(...).from(...).where(...).limit(1)` resolves to one row (or none).
+ */
+function dbWithSong(
+  owner: string | null | Error,
+  subAccount = "midnight-drive.masters-sonata.testnet",
+): DbClient {
+  const builder = {
+    from: () => builder,
+    where: () => builder,
+    limit: () =>
+      owner instanceof Error
+        ? Promise.reject(owner)
+        : Promise.resolve(
+            owner === null ? [] : [{ ownerAccountId: owner, subAccount }],
+          ),
+  };
+
+  return { select: () => builder } as unknown as DbClient;
+}
+
+function fakeChain(
+  overrides: Partial<SonataChain> = {},
+  db: DbClient = dbWithSong(NADIA_ACCOUNT_ID),
+) {
   const calls: Captured[] = [];
   const track =
     (method: string, result: ChainResult = SUCCESS) =>
@@ -41,7 +69,7 @@ function fakeChain(overrides: Partial<SonataChain> = {}) {
   } as SonataChain;
 
   const caller = createTestCaller({
-    db: {} as DbClient,
+    db,
     session: null,
     sonataChain: chain,
   });
@@ -167,9 +195,95 @@ describe("sonata mutations", () => {
     expect(calls).toEqual([
       {
         method: "withdrawFromSong",
-        args: ["nadia", "midnight-drive", "1200000"],
+        args: [
+          "nadia",
+          "midnight-drive",
+          "1200000",
+          "midnight-drive.masters-sonata.testnet",
+        ],
       },
-      { method: "withdrawFromSong", args: ["nadia", "midnight-drive"] },
+      {
+        method: "withdrawFromSong",
+        args: [
+          "nadia",
+          "midnight-drive",
+          undefined,
+          "midnight-drive.masters-sonata.testnet",
+        ],
+      },
+    ]);
+  });
+
+  it("songs.withdraw targets the cached replacement wallet", async () => {
+    const replacement = "midnight-drive-fixed.masters-sonata.testnet";
+    const { caller, calls } = fakeChain(
+      {},
+      dbWithSong(NADIA_ACCOUNT_ID, replacement),
+    );
+
+    await caller.sonata.songs.withdraw({
+      role: "nadia",
+      tokenId: "midnight-drive",
+    });
+
+    expect(calls).toEqual([
+      {
+        method: "withdrawFromSong",
+        args: ["nadia", "midnight-drive", undefined, replacement],
+      },
+    ]);
+  });
+
+  it("songs.withdraw rejects a signer that is not the cached owner", async () => {
+    const { caller, calls } = fakeChain(
+      {},
+      dbWithSong("collector-sonata.testnet"),
+    );
+
+    await expect(
+      caller.sonata.songs.withdraw({
+        role: "nadia",
+        tokenId: "midnight-drive",
+      }),
+    ).rejects.toMatchObject({
+      code: "FORBIDDEN",
+      message: expect.stringContaining("Only the current owner can withdraw"),
+    });
+
+    expect(calls).toHaveLength(0);
+  });
+
+  it("songs.withdraw returns NOT_FOUND for a master that is not indexed", async () => {
+    const { caller, calls } = fakeChain({}, dbWithSong(null));
+
+    await expect(
+      caller.sonata.songs.withdraw({
+        role: "nadia",
+        tokenId: "midnight-drive",
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+
+    expect(calls).toHaveLength(0);
+  });
+
+  it("songs.withdraw still lets the chain decide when the cache cannot be read", async () => {
+    const { caller, calls } = fakeChain(
+      {},
+      dbWithSong(new Error("database unavailable")),
+    );
+
+    await expect(
+      caller.sonata.songs.withdraw({
+        role: "nadia",
+        tokenId: "midnight-drive",
+      }),
+    ).resolves.toMatchObject({ txHash: SUCCESS.txHash, outcome: "success" });
+
+    expect(calls).toEqual([
+      {
+        method: "withdrawFromSong",
+        args: ["nadia", "midnight-drive", undefined, undefined],
+      },
     ]);
   });
 

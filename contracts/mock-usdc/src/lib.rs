@@ -21,7 +21,11 @@ pub const FT_METADATA_SPEC: &str = "ft-1.0.0";
 pub const FT_EVENT_STANDARD: &str = "nep141";
 pub const FT_EVENT_VERSION: &str = "1.0.0";
 
-const GAS_FOR_FT_ON_TRANSFER: Gas = Gas::from_tgas(25);
+/// Gas forwarded to `ft_on_transfer`. Market needs 50 Tgas for
+/// `nft_transfer_payout` plus 40 Tgas for its distribution callback, so the
+/// receiver budget must cover both (with margin) or the market panics with
+/// "Exceeded the prepaid gas" and the buy is refunded.
+const GAS_FOR_FT_ON_TRANSFER: Gas = Gas::from_tgas(120);
 const GAS_FOR_RESOLVE_TRANSFER: Gas = Gas::from_tgas(15);
 const ONE_YOCTONEAR: NearToken = NearToken::from_yoctonear(1);
 const ZERO_TOKEN: NearToken = NearToken::from_yoctonear(0);
@@ -431,7 +435,8 @@ impl Contract {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use near_sdk::test_utils::{accounts, VMContextBuilder};
+    use near_sdk::mock::MockAction;
+    use near_sdk::test_utils::{accounts, get_created_receipts, VMContextBuilder};
     use near_sdk::{testing_env, RuntimeFeesConfig};
     use std::collections::HashMap;
 
@@ -565,6 +570,56 @@ mod tests {
         assert_eq!(ft.ft_balance_of(accounts(ALICE)), U128(2 * USDC));
         assert_eq!(ft.ft_balance_of(accounts(BOB)), U128(USDC));
         assert_eq!(ft.ft_total_supply(), U128(3 * USDC));
+    }
+
+    /// The receiver must receive enough gas to run the market's own two-call
+    /// chain: `nft_transfer_payout` (50 Tgas) plus `on_transfer_payout`
+    /// (40 Tgas). A smaller budget reverts every buy with "Exceeded the
+    /// prepaid gas" and refunds the buyer.
+    #[test]
+    fn transfer_call_prepays_enough_gas_for_the_receiver() {
+        use near_sdk::Gas;
+
+        /* contracts/market/src/lib.rs: GAS_FOR_PAYOUT + GAS_FOR_CALLBACK. */
+        const MARKET_SUBCALLS: Gas = Gas::from_tgas(90);
+        assert!(
+            GAS_FOR_FT_ON_TRANSFER.as_gas() >= MARKET_SUBCALLS.as_gas(),
+            "ft_on_transfer must receive at least the market's 90 Tgas"
+        );
+
+        let mut ft = Contract::new(accounts(OWNER));
+        mint(&mut ft, ALICE, USDC);
+        register(&mut ft, BOB);
+        testing_env!(VMContextBuilder::new()
+            .predecessor_account_id(accounts(ALICE))
+            .attached_deposit(ONE_YOCTONEAR)
+            .build());
+        let _ = ft.ft_transfer_call(
+            accounts(BOB),
+            U128(USDC),
+            None,
+            "buy:midnight-drive".to_string(),
+        );
+
+        let receipts = get_created_receipts();
+        let receiver = receipts
+            .iter()
+            .find(|receipt| receipt.receiver_id == accounts(BOB))
+            .expect("ft_transfer_call must call the receiver");
+        let gas = receiver
+            .actions
+            .iter()
+            .find_map(|action| match action {
+                MockAction::FunctionCallWeight {
+                    method_name,
+                    prepaid_gas,
+                    ..
+                } if method_name == b"ft_on_transfer" => Some(*prepaid_gas),
+                _ => None,
+            })
+            .expect("the receiver receipt must call ft_on_transfer");
+        assert_eq!(gas.as_gas(), GAS_FOR_FT_ON_TRANSFER.as_gas());
+        assert!(gas.as_gas() >= MARKET_SUBCALLS.as_gas());
     }
 
     /// A panicking receiver must not lose the sender's funds.

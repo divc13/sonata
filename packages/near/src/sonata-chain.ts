@@ -22,6 +22,7 @@ import {
   APPROVAL_STORAGE_YOCTO,
   CONTRACT_IDS,
   DEMO_ACCOUNT_IDS,
+  FT_TRANSFER_CALL_GAS,
   LISTING_STORAGE_YOCTO,
   ONE_YOCTO,
   PASS_PRICE_USDC_MICRO,
@@ -59,6 +60,7 @@ export type SonataChain = {
     role: DemoRole,
     tokenId: string,
     amountUsdc?: string,
+    accountId?: string,
   ): Promise<ChainResult>;
   listMaster(
     role: DemoRole,
@@ -146,6 +148,7 @@ export function buildPassCall(): PreparedCall {
       PASS_PURCHASE_MSG,
     ),
     deposit: ONE_YOCTO,
+    gas: FT_TRANSFER_CALL_GAS,
   };
 }
 
@@ -160,18 +163,26 @@ export function buildBuyCall(tokenId: string, priceUsdc: string): PreparedCall {
       buyMasterMsg(tokenId),
     ),
     deposit: ONE_YOCTO,
+    gas: FT_TRANSFER_CALL_GAS,
   };
 }
 
-/** `song-wallet.withdraw(amount)` or `withdraw_all()`. */
+/**
+ * `song-wallet.withdraw(amount)` or `withdraw_all()`.
+ *
+ * `accountId` defaults to the token-derived wallet. The rescue migration
+ * passes the replacement wallet from `platform.song_accounts` instead, so a
+ * broken original wallet never receives the call.
+ */
 export function buildWithdrawCall(
   tokenId: string,
   amountUsdc?: string,
+  accountId?: string,
 ): PreparedCall {
-  const accountId = songAccountId(tokenId, CONTRACT_IDS.masters);
+  const contractId = accountId ?? songAccountId(tokenId, CONTRACT_IDS.masters);
   if (amountUsdc === undefined) {
     return {
-      contractId: accountId,
+      contractId,
       method: "withdraw_all",
       args: {},
       deposit: 0n,
@@ -179,7 +190,7 @@ export function buildWithdrawCall(
   }
 
   return {
-    contractId: accountId,
+    contractId,
     method: "withdraw",
     args: { amount: assertMicroUsdc(amountUsdc, "withdrawal amount") },
     deposit: 0n,
@@ -343,10 +354,10 @@ export function createSonataChain(
       });
     },
 
-    async withdrawFromSong(role, tokenId, amountUsdc) {
+    async withdrawFromSong(role, tokenId, amountUsdc, accountId) {
       return execute(
         assertDemoRole(role),
-        buildWithdrawCall(tokenId, amountUsdc),
+        buildWithdrawCall(tokenId, amountUsdc, accountId),
         { call, createSignedAccount, resolveSigner },
       );
     },
@@ -393,7 +404,8 @@ export const withdrawFromSong = (
   role: DemoRole,
   tokenId: string,
   amountUsdc?: string,
-) => sonataChain.withdrawFromSong(role, tokenId, amountUsdc);
+  accountId?: string,
+) => sonataChain.withdrawFromSong(role, tokenId, amountUsdc, accountId);
 export const listMaster = (
   role: DemoRole,
   tokenId: string,
