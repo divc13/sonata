@@ -1,70 +1,117 @@
+import {
+  CONTRACT_IDS,
+  formatHours,
+  shortAccount,
+  RATE_PER_HOUR_USDC_MICRO,
+} from "@infinitunes/near";
 import { formatDuration } from "@infinitunes/types";
 import { Badge } from "@infinitunes/ui/components/badge";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 
 import { ImageWithFallback } from "~/components/image-with-fallback";
 import { CopyField } from "~/components/sonata/copy-field";
 import { EarningsBars } from "~/components/sonata/earnings-bars";
+import { MasterActions } from "~/components/sonata/master-actions";
 import { MasterTabs } from "~/components/sonata/master-tabs";
 import { PlayMaster } from "~/components/sonata/play-master";
 import { Receipt } from "~/components/sonata/receipt";
 import { ReceiptRow } from "~/components/sonata/receipt-row";
 import { Stat } from "~/components/sonata/stat";
+import { getErrorCode } from "~/lib/error-code";
 import { pageMetadata } from "~/lib/metadata";
-import {
-  chartLabels,
-  earnings30d,
-  earningsSeries,
-  formatHours,
-  formatUsd,
-  masterByToken,
-  RATE_PER_HOUR,
-} from "~/lib/sonata-demo";
+import { formatUsdMicro2, selectListingForToken } from "~/lib/sonata/market";
+import { api } from "~/lib/trpc/server";
 
 type MasterPageProps = { params: Promise<{ tokenId: string }> };
+
+/** Shared by `generateMetadata` and the page body (one read per request). */
+const getMaster = cache(async (tokenId: string) => {
+  try {
+    return await api.sonata.songs.byId({ tokenId });
+  } catch (error) {
+    if (getErrorCode(error) === "NOT_FOUND") return null;
+    throw error;
+  }
+});
+
+const dateFormat = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
+
+const formatDate = (value: Date) => dateFormat.format(value);
 
 export async function generateMetadata({
   params,
 }: MasterPageProps): Promise<Metadata> {
   const { tokenId } = await params;
-  const master = masterByToken(tokenId);
-  if (!master)
+  const master = await getMaster(tokenId);
+
+  if (!master) {
     return pageMetadata({
       title: "Master not found",
       description: "This master is no longer in the Sonata catalogue.",
       url: "/market",
     });
+  }
 
   return pageMetadata({
     title: `${master.title} by ${master.artistName}`,
-    description: master.description,
+    description:
+      master.description ??
+      `${master.artistName}'s master, its song account and its verified earnings.`,
     url: `/master/${master.tokenId}`,
     image: master.coverUrl,
     square: true,
   });
 }
 
-const regions = [
-  { name: "United States", share: 38 },
-  { name: "Germany", share: 17 },
-  { name: "Japan", share: 12 },
-  { name: "Brazil", share: 9 },
-  { name: "Elsewhere", share: 24 },
-];
-
 export default async function MasterPage({ params }: MasterPageProps) {
   const { tokenId } = await params;
-  const master = masterByToken(tokenId);
+  const [master, listingRow] = await Promise.all([
+    getMaster(tokenId),
+    api.sonata.market.listingByToken({ tokenId }),
+  ]);
+
   if (!master) notFound();
 
-  const earnings = earnings30d(master);
-  const series = earningsSeries.map(
-    (value) => Math.round(value * (earnings / 128.4) * 100) / 100,
+  const listing = selectListingForToken(listingRow, master.tokenId);
+  const listed = listing !== null;
+  const earningsMicro = master.earnings30dUsdc;
+  const annualEstimateMicro = (BigInt(earningsMicro) * 12n).toString();
+  const annualMultiple =
+    listing && BigInt(listing.priceUsdc) > 0n
+      ? Number(annualEstimateMicro) / Number(listing.priceUsdc)
+      : 0;
+
+  const payouts = master.recentPayouts;
+  const payoutSeries = [...payouts].reverse();
+  const payoutData = payoutSeries.map(
+    (payout) => Number(payout.amountUsdc) / 1_000_000,
   );
-  const listed = Boolean(master.priceUsd);
-  const annualEstimate = earnings * 12;
-  const annualMultiple = master.priceUsd ? annualEstimate / master.priceUsd : 0;
+  const labelIndexes = new Set([
+    0,
+    Math.floor((payoutSeries.length - 1) / 2),
+    payoutSeries.length - 1,
+  ]);
+  const payoutLabels = [...labelIndexes]
+    .filter((index) => index >= 0 && index < payoutSeries.length)
+    .map((index) => `E${payoutSeries[index].epochId}`);
+
+  const recentSeconds = payouts.reduce(
+    (total, payout) => total + payout.seconds,
+    0,
+  );
+  const recentTotalMicro = payouts
+    .reduce((total, payout) => total + BigInt(payout.amountUsdc), 0n)
+    .toString();
+  const averagePayoutMicro =
+    payouts.length > 0
+      ? (BigInt(recentTotalMicro) / BigInt(payouts.length)).toString()
+      : "0";
 
   return (
     <div className="flex flex-col gap-8">
@@ -91,7 +138,7 @@ export default async function MasterPage({ params }: MasterPageProps) {
                 variant="outline"
                 className="border-primary/40 text-primary"
               >
-                {listed ? "For sale" : "Owned by you"}
+                {listed ? "For sale" : "Not for sale"}
               </Badge>
             </div>
 
@@ -134,7 +181,8 @@ export default async function MasterPage({ params }: MasterPageProps) {
                 durationSec={master.durationSec}
               />
               <p className="text-sm text-muted-foreground tabular-nums">
-                Earns {formatUsd(RATE_PER_HOUR)} per verified hour
+                Earns {formatUsdMicro2(RATE_PER_HOUR_USDC_MICRO)} per verified
+                hour
               </p>
             </div>
           </div>
@@ -149,27 +197,27 @@ export default async function MasterPage({ params }: MasterPageProps) {
                 <dl className="grid grid-cols-2 gap-x-6 gap-y-6 sm:grid-cols-3">
                   <Stat
                     label="Trailing 30 day earnings"
-                    value={formatUsd(earnings)}
+                    value={formatUsdMicro2(earningsMicro)}
                     hint="Paid to the song account"
                   />
                   <Stat
-                    label="Verified hours"
-                    value={formatHours(master.hours30d)}
-                    hint="Trailing 30 days"
+                    label="Recent verified hours"
+                    value={formatHours(recentSeconds)}
+                    hint={`${payouts.length} settled ${payouts.length === 1 ? "epoch" : "epochs"}`}
                   />
                   <Stat
                     label="Effective rate"
-                    value={`${formatUsd(RATE_PER_HOUR)} / hr`}
+                    value={`${formatUsdMicro2(RATE_PER_HOUR_USDC_MICRO)} / hr`}
                     hint="Fixed at publish"
                   />
                   <Stat
                     label="Current owner"
                     value={
                       <span className="font-mono text-sm">
-                        {master.ownerHandle}
+                        {shortAccount(master.ownerAccountId)}
                       </span>
                     }
-                    hint={master.owner}
+                    hint={master.ownerAccountId}
                   />
                   <Stat
                     label="Creator"
@@ -178,24 +226,35 @@ export default async function MasterPage({ params }: MasterPageProps) {
                         {master.artistHandle}
                       </span>
                     }
-                    hint="Earns a 5.0% royalty"
+                    hint={`${master.artistName} · 5.0% royalty`}
                   />
                   <Stat
-                    label="Song account balance"
-                    value={formatUsd(master.balanceUsd)}
+                    label="Song account"
+                    value={
+                      <span className="font-mono text-sm">
+                        {shortAccount(master.subAccount)}
+                      </span>
+                    }
                     hint="Moves with the master"
                   />
                 </dl>
 
                 <section className="flex flex-col gap-3">
                   <h2 className="font-heading text-base font-semibold tracking-[-0.01em]">
-                    Earnings, last 30 days
+                    Earnings by settled epoch
                   </h2>
-                  <EarningsBars
-                    data={series}
-                    labels={chartLabels}
-                    summary={`${master.title} earned ${formatUsd(earnings)} over the last 30 days from ${formatHours(master.hours30d)} of verified listening.`}
-                  />
+                  {payoutData.length > 0 ? (
+                    <EarningsBars
+                      data={payoutData}
+                      labels={payoutLabels}
+                      summary={`${master.title} earned ${formatUsdMicro2(recentTotalMicro)} across ${payouts.length} recent ${payouts.length === 1 ? "payout" : "payouts"}.`}
+                    />
+                  ) : (
+                    <p className="text-sm leading-6 text-muted-foreground">
+                      No settled payouts yet. Earnings appear here after the
+                      first epoch closes.
+                    </p>
+                  )}
                 </section>
 
                 <section className="flex max-w-2xl flex-col gap-2 border-t border-border/60 pt-6">
@@ -204,95 +263,107 @@ export default async function MasterPage({ params }: MasterPageProps) {
                   </h2>
                   <p className="text-sm leading-6 text-muted-foreground">
                     Every verified hour of listening pays the song account a
-                    fixed {formatUsd(RATE_PER_HOUR)}. The account belongs to
-                    whoever owns the master, so the balance and the earnings
-                    arrive with the sale. The creator keeps a 5.0% royalty on
-                    every payout.
+                    fixed {formatUsdMicro2(RATE_PER_HOUR_USDC_MICRO)}. The
+                    account belongs to whoever owns the master, so its balance
+                    and the earnings arrive with the sale. The creator keeps a
+                    5.0% royalty on every payout.
                   </p>
                 </section>
               </div>
             }
             ownership={
-              <Receipt title="Ownership record" meta="4 events">
-                <ReceiptRow
-                  title="Master minted"
-                  meta="Jan 12, 2026"
-                  value="1 of 1"
-                  detail={`to ${master.artistHandle}`}
-                />
-                <ReceiptRow
-                  title="First sale"
-                  meta="Feb 3, 2026"
-                  value={formatUsd(32)}
-                  detail={`to ${master.ownerHandle}`}
-                />
-                <ReceiptRow
-                  title="Royalty paid"
-                  meta="Oct 26, 2026"
-                  value={formatUsd(4.08)}
-                  detail="Epoch 6"
-                />
-                <ReceiptRow
-                  title={listed ? "Listed for sale" : "Held by owner"}
-                  meta={listed ? "Nov 3, 2026" : "Since Feb 3, 2026"}
-                  value={
-                    listed ? formatUsd(master.priceUsd ?? 0) : "Not listed"
+              <div className="flex flex-col gap-6">
+                <Receipt title="Ownership record">
+                  <ReceiptRow
+                    title="Master minted"
+                    meta={formatDate(master.createdAt)}
+                    value="1 of 1"
+                    detail={`to ${master.artistHandle}`}
+                  />
+                  <ReceiptRow
+                    title="Current owner"
+                    meta={master.ownerAccountId}
+                    value={shortAccount(master.ownerAccountId)}
+                    detail={master.subAccount}
+                  />
+                  <ReceiptRow
+                    title={listed ? "Listed for sale" : "Held by owner"}
+                    meta={
+                      listing
+                        ? formatDate(listing.createdAt)
+                        : "No active listing"
+                    }
+                    value={
+                      listing
+                        ? formatUsdMicro2(listing.priceUsdc)
+                        : "Not listed"
+                    }
+                    detail={
+                      listing
+                        ? `Seller ${shortAccount(listing.sellerAccountId)}`
+                        : master.artistHandle
+                    }
+                  />
+                </Receipt>
+
+                <Receipt
+                  title="Recent payouts"
+                  meta={
+                    payouts.length > 0
+                      ? `${payouts.length} settled`
+                      : "Nothing yet"
                   }
-                  detail={listed ? "Active listing" : master.ownerHandle}
-                />
-              </Receipt>
+                >
+                  {payouts.length > 0 ? (
+                    payouts.map((payout) => (
+                      <ReceiptRow
+                        key={payout.epochId}
+                        title={`Epoch ${payout.epochId}`}
+                        meta={formatDate(payout.createdAt)}
+                        value={formatUsdMicro2(payout.amountUsdc)}
+                        detail={`${formatHours(payout.seconds)} verified`}
+                      />
+                    ))
+                  ) : (
+                    <ReceiptRow
+                      title="No payouts yet"
+                      meta="Settles after the first closed epoch"
+                    />
+                  )}
+                </Receipt>
+              </div>
             }
             listeners={
               <div className="flex flex-col gap-8">
                 <dl className="grid grid-cols-2 gap-x-6 gap-y-6 sm:grid-cols-3">
                   <Stat
-                    label="Verified hours"
-                    value={formatHours(master.hours30d)}
-                    hint="Trailing 30 days"
+                    label="Recent verified hours"
+                    value={formatHours(recentSeconds)}
+                    hint={`Across ${payouts.length} settled ${payouts.length === 1 ? "epoch" : "epochs"}`}
                   />
                   <Stat
-                    label="Average session"
-                    value="24.6 min"
-                    hint="Per listener, per day"
+                    label="Recent payouts"
+                    value={payouts.length.toString()}
+                    hint="Settled epochs"
                   />
                   <Stat
-                    label="Countries"
-                    value="34"
-                    hint="Aggregated, no identities"
+                    label="Average payout"
+                    value={
+                      payouts.length > 0
+                        ? formatUsdMicro2(averagePayoutMicro)
+                        : "—"
+                    }
+                    hint="Per settled epoch"
                   />
                 </dl>
 
-                <section className="flex flex-col gap-4">
+                <section className="flex max-w-xl flex-col gap-2">
                   <h2 className="font-heading text-base font-semibold tracking-[-0.01em]">
-                    Where it is heard
+                    Listener detail
                   </h2>
-                  <ul className="flex max-w-xl flex-col gap-3">
-                    {regions.map((region) => (
-                      <li
-                        key={region.name}
-                        className="grid grid-cols-[minmax(0,8rem)_minmax(0,1fr)_2.5rem] items-center gap-3 text-sm"
-                      >
-                        <span className="truncate text-muted-foreground">
-                          {region.name}
-                        </span>
-                        <span
-                          aria-hidden="true"
-                          className="h-1.5 overflow-hidden rounded-full bg-fill"
-                        >
-                          <span
-                            className="block h-full rounded-full bg-primary/70"
-                            style={{ width: `${region.share}%` }}
-                          />
-                        </span>
-                        <span className="text-right text-xs text-muted-foreground tabular-nums">
-                          {region.share}%
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="max-w-xl text-sm leading-6 text-muted-foreground">
-                    Region totals are aggregated from verified listening hours.
-                    Sonata never shows who listened.
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    Region and session detail is not part of the market feed
+                    yet. Every payout above comes from verified listening hours.
                   </p>
                 </section>
               </div>
@@ -301,26 +372,33 @@ export default async function MasterPage({ params }: MasterPageProps) {
               <div className="flex max-w-xl flex-col gap-3">
                 <p className="text-sm leading-6 text-muted-foreground">
                   The master is one record in the masters contract. Its song
-                  account is where listening earnings collect, and the listen
-                  root commits every settled epoch.
+                  account is where listening earnings collect, and the market
+                  holds the active resale listing.
                 </p>
                 <CopyField
                   label="Masters contract"
-                  value="masters.sonata.testnet"
+                  value={CONTRACT_IDS.masters}
                 />
                 <CopyField label="Token id" value={master.tokenId} />
+                <CopyField label="Song account" value={master.subAccount} />
                 <CopyField
-                  label="Song account"
-                  value={`${master.tokenId}.sonata.testnet`}
+                  label="Owner account"
+                  value={master.ownerAccountId}
                 />
                 <CopyField
-                  label="Listen root"
-                  value="0x8a19c4e2b7d0a5f1c9e3b6d84a2f7c0e91ab5d38f2c0"
+                  label="Creator account"
+                  value={master.creatorAccountId}
                 />
                 <CopyField
                   label="Market contract"
-                  value="market.sonata.testnet"
+                  value={CONTRACT_IDS.market}
                 />
+                {listing?.txHash ? (
+                  <CopyField
+                    label="Listing transaction"
+                    value={listing.txHash}
+                  />
+                ) : null}
                 <p className="mt-2 text-xs leading-5 text-muted-foreground">
                   Testnet deployment. Amounts settle in USDC.
                 </p>
@@ -330,14 +408,14 @@ export default async function MasterPage({ params }: MasterPageProps) {
         </div>
 
         <aside className="order-first flex min-w-0 flex-col gap-4 lg:order-none lg:sticky lg:top-20">
-          {listed ? (
+          {listing ? (
             <section className="flex flex-col gap-4 rounded-xl border border-border/60 bg-card p-5">
               <div className="flex items-baseline justify-between gap-3">
                 <h2 className="font-heading text-base font-semibold tracking-[-0.01em]">
                   Buy this master
                 </h2>
                 <span className="font-heading text-2xl font-bold tabular-nums">
-                  {formatUsd(master.priceUsd ?? 0)}
+                  {formatUsdMicro2(listing.priceUsdc)}
                 </span>
               </div>
 
@@ -345,83 +423,75 @@ export default async function MasterPage({ params }: MasterPageProps) {
                 <div className="flex justify-between gap-3">
                   <dt className="text-muted-foreground">Trailing 30 days</dt>
                   <dd className="font-medium tabular-nums">
-                    {formatUsd(earnings)}
+                    {formatUsdMicro2(earningsMicro)}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <dt className="text-muted-foreground">Includes in account</dt>
+                  <dt className="text-muted-foreground">
+                    Recent verified hours
+                  </dt>
                   <dd className="font-medium tabular-nums">
-                    {formatUsd(master.balanceUsd)}
+                    {formatHours(recentSeconds)}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-3">
                   <dt className="text-muted-foreground">Annual estimate</dt>
                   <dd className="text-right font-medium tabular-nums">
-                    {formatUsd(annualEstimate)}
-                    <span className="ml-1 text-xs font-normal text-muted-foreground">
-                      {annualMultiple.toFixed(1)}x
-                    </span>
+                    {formatUsdMicro2(annualEstimateMicro)}
+                    {annualMultiple > 0 ? (
+                      <span className="ml-1 text-xs font-normal text-muted-foreground">
+                        {annualMultiple.toFixed(1)}x
+                      </span>
+                    ) : null}
                   </dd>
                 </div>
               </dl>
 
-              <button
-                type="button"
-                className="inline-flex h-(--ctl-lg) items-center justify-center rounded-(--r-ctl) bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors duration-fast hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-              >
-                Buy master
-              </button>
               <p className="text-xs leading-5 text-muted-foreground">
-                Estimate, not a promise. Earnings vary with listening. The
-                account balance is included in the price.
+                Estimate, not a promise. Earnings vary with listening. The song
+                account moves with the master.
               </p>
             </section>
           ) : (
             <section className="flex flex-col gap-4 rounded-xl border border-border/60 bg-card p-5">
               <div className="flex flex-col gap-1">
                 <h2 className="font-heading text-base font-semibold tracking-[-0.01em]">
-                  You own this master
+                  Not for sale
                 </h2>
                 <p className="text-xs text-muted-foreground">
-                  {master.ownerHandle} · {master.owner}
+                  Held by {shortAccount(master.ownerAccountId)}
                 </p>
               </div>
 
               <div className="flex flex-col gap-1 border-y border-border/60 py-3">
                 <span className="text-xs text-muted-foreground">
-                  Song account balance
+                  Trailing 30 day earnings
                 </span>
                 <span className="font-heading text-2xl font-bold tabular-nums">
-                  {formatUsd(master.balanceUsd)}
+                  {formatUsdMicro2(earningsMicro)}
                 </span>
               </div>
 
-              <button
-                type="button"
-                className="inline-flex h-(--ctl-lg) items-center justify-center rounded-(--r-ctl) bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors duration-fast hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-              >
-                Withdraw
-              </button>
-              <button
-                type="button"
-                className="inline-flex h-(--ctl-lg) items-center justify-center rounded-(--r-ctl) border border-border/60 bg-transparent px-4 text-sm font-semibold transition-colors duration-fast hover:bg-fill focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-              >
-                Sell master
-              </button>
               <p className="text-xs leading-5 text-muted-foreground">
-                Earnings are paid to the song, not to you personally. Selling
-                the master moves the account with it.
+                Earnings are paid to the song, not to the owner personally.
+                Selling the master moves the account with it.
               </p>
             </section>
           )}
+
+          <MasterActions
+            tokenId={master.tokenId}
+            ownerAccountId={master.ownerAccountId}
+            listingPriceUsdc={listing?.priceUsdc ?? null}
+          />
 
           <section className="flex flex-col gap-2 rounded-xl border border-border/60 bg-card p-5">
             <h2 className="font-heading text-sm font-semibold tracking-[-0.01em]">
               The rate is fixed
             </h2>
             <p className="text-xs leading-5 text-muted-foreground">
-              {formatUsd(RATE_PER_HOUR)} per verified hour, set when the master
-              was published. It does not move with the market.
+              {formatUsdMicro2(RATE_PER_HOUR_USDC_MICRO)} per verified hour, set
+              when the master was published. It does not move with the market.
             </p>
           </section>
         </aside>
