@@ -1,7 +1,7 @@
 import { pageMetadata } from "~/lib/metadata";
 
 const title = "Privacy Policy";
-const description = "How Infinitunes handles your data.";
+const description = "How Sonata handles your data.";
 
 export const metadata = pageMetadata({
   title,
@@ -22,9 +22,9 @@ export default function PrivacyPage() {
       </p>
 
       <p className="text-sm leading-5 text-muted-foreground">
-        Infinitunes stores only what it needs to run your library and account,
-        never sells your data, and lets you delete your account and its data at
-        any time from settings.
+        Sonata stores only what it needs to run your library and account, never
+        sells your data, and lets you delete your account and its data at any
+        time from settings.
       </p>
     </div>
   );

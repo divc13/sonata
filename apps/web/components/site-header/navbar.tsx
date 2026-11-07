@@ -1,10 +1,7 @@
 import Link from "next/link";
-import { Suspense } from "react";
 
 import { GlassSurface } from "~/components/glass/glass-surface";
 import { controlStyles } from "~/lib/control-styles";
-import { EMPTY_MEGA_MENU, megaMenuOrEmpty } from "~/lib/shell-data";
-import { api } from "~/lib/trpc/server";
 import { cn } from "~/lib/utils";
 
 import { SearchMenu } from "../search/search-menu";
@@ -25,18 +22,6 @@ const logInClassName = cn(
 
 const mainNavClassName = "hidden shrink-0 grow-0 lg:block";
 
-/** The catalog menu is cached (an hour), so it normally lands in the static shell. */
-async function CatalogMenu() {
-  const megaMenu = await megaMenuOrEmpty(api.get.megaMenu({}));
-
-  return <MainNav megaMenu={megaMenu} className={mainNavClassName} />;
-}
-
-/**
- * Nothing here reads the request: the user menu and the Log in button resolve
- * the session in client islands (`ViewerProvider`) and the language picker
- * reads its cookie when it opens, so the toolbar prerenders with the layout.
- */
 export function Navbar() {
   return (
     <Toolbar>
@@ -44,13 +29,7 @@ export function Navbar() {
 
       <ToolbarNavigation />
 
-      <Suspense
-        fallback={
-          <MainNav megaMenu={EMPTY_MEGA_MENU} className={mainNavClassName} />
-        }
-      >
-        <CatalogMenu />
-      </Suspense>
+      <MainNav className={mainNavClassName} />
 
       <div data-toolbar-title className="min-w-0 flex-1" />
 

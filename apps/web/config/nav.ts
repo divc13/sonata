@@ -1,15 +1,16 @@
 import {
-  Disc3,
   History,
+  Home,
   Library,
-  ListMusic,
-  Mic2,
-  Podcast,
-  Radio,
+  Search,
   Star,
+  Store,
+  User2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { Route } from "next";
+
+import { asRoute } from "~/lib/utils";
 
 export type NavItem = {
   title: string;
@@ -17,37 +18,13 @@ export type NavItem = {
   icon: LucideIcon;
 };
 
-export const browseNav: NavItem[] = [
-  {
-    title: "Top Albums",
-    href: "/album",
-    icon: Library,
-  },
-  {
-    title: "Top Charts",
-    href: "/chart",
-    icon: Disc3,
-  },
-  {
-    title: "Top Playlists",
-    href: "/playlist",
-    icon: ListMusic,
-  },
-  {
-    title: "Podcasts",
-    href: "/show",
-    icon: Podcast,
-  },
-  {
-    title: "Top Artists",
-    href: "/artist",
-    icon: Mic2,
-  },
-  {
-    title: "Radio",
-    href: "/radio",
-    icon: Radio,
-  },
+/** The primary screen set. The old browse routes keep their pages off the nav. */
+export const primaryNav: NavItem[] = [
+  { title: "Home", href: "/", icon: Home },
+  { title: "Search", href: "/search", icon: Search },
+  { title: "Library", href: asRoute("/library"), icon: Library },
+  { title: "Market", href: "/market", icon: Store },
+  { title: "You", href: "/me", icon: User2 },
 ];
 
 export const libraryNav: NavItem[] = [
@@ -62,8 +39,6 @@ export const libraryNav: NavItem[] = [
     icon: Star,
   },
 ];
-
-export const sidebarNav: NavItem[] = [...browseNav, ...libraryNav];
 
 /** The mockup tab bar rule: exact match, or a path below the item. `/` only matches itself. */
 export function isNavActive(pathname: string | null, href: string) {

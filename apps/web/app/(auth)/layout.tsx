@@ -61,13 +61,13 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
         <div className="grid w-full max-w-88 gap-4">
           <Link
             href="/"
-            aria-label="Infinitunes home"
+            aria-label="Sonata home"
             className="mb-2 flex items-center gap-2 justify-self-start rounded-sm font-heading text-lg/6 font-bold tracking-tight lowercase"
           >
             <span className="grid size-7 shrink-0 place-items-center rounded-sm bg-primary text-primary-foreground">
               <Icons.Logo className="size-4" />
             </span>
-            infinitunes
+            sonata
           </Link>
           {children}
         </div>

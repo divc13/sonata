@@ -26,7 +26,7 @@ import React from "react";
 
 import { GlassSurface } from "~/components/glass/glass-surface";
 import { PathnameBoundary } from "~/components/pathname-boundary";
-import { browseNav, isNavActive, libraryNav } from "~/config/nav";
+import { isNavActive, libraryNav, primaryNav } from "~/config/nav";
 import type { NavItem } from "~/config/nav";
 import { siteConfig } from "~/config/site";
 import { useIsHydrated } from "~/hooks/use-is-hydrated";
@@ -35,7 +35,6 @@ import { controlStyles } from "~/lib/control-styles";
 import type { PlaylistView } from "~/lib/optimistic-playlists";
 import { asRoute, cn, isMacOs } from "~/lib/utils";
 
-import { Icons } from "./icons";
 import { NewPlaylistForm } from "./playlist/new-playlist-form";
 
 type SidebarProps = {
@@ -177,14 +176,11 @@ function SidebarLogo({ collapsed }: { collapsed: boolean }) {
     <Link
       href="/"
       className={cn(
-        "flex h-10 items-center gap-2 rounded-sm px-3 font-heading text-lg/6 font-bold tracking-tight lowercase group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:px-2.5",
+        "flex h-10 items-center gap-2 rounded-sm px-3 font-heading text-lg/6 font-bold tracking-[-0.02em] lowercase text-foreground group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:text-base",
         railMotion,
       )}
     >
-      <span className="grid size-7 shrink-0 place-items-center rounded-sm bg-primary text-primary-foreground">
-        <Icons.Logo className="size-4" />
-      </span>
-      <span className={railLabel}>{siteConfig.name}</span>
+      <span className="min-w-0 flex-1 truncate">{siteConfig.name}</span>
     </Link>
   );
 
@@ -450,7 +446,7 @@ function SidebarContents({
         <SidebarGroup className="p-0">
           <SidebarGroupContent>
             <SidebarNavList
-              items={browseNav}
+              items={primaryNav}
               pathname={pathname}
               collapsed={collapsed}
             />
@@ -503,7 +499,7 @@ function TabletRail({
       )}
     >
       <SidebarLogo collapsed />
-      <SidebarNavList items={browseNav} pathname={pathname} collapsed />
+      <SidebarNavList items={primaryNav} pathname={pathname} collapsed />
       {user && (
         <SidebarNavList items={libraryNav} pathname={pathname} collapsed />
       )}
