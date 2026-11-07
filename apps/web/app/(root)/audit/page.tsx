@@ -1,4 +1,5 @@
 import { RATE_PER_HOUR_USDC_MICRO } from "@infinitunes/near";
+import { io } from "next/cache";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -18,6 +19,7 @@ import {
   shortHash,
   sumMicro,
 } from "~/lib/sonata-display";
+import { getPlatformNextEpochId } from "~/lib/sonata/chain";
 import { formatUsdMicro2 } from "~/lib/sonata/market";
 import { api } from "~/lib/trpc/server";
 import { cn } from "~/lib/utils";
@@ -29,7 +31,27 @@ export const metadata = pageMetadata({
   url: "/audit",
 });
 
+/**
+ * The chain is the only source of truth for the id `settle_epoch` accepts.
+ * Fall back to the mirrored history if the read fails, so the page still
+ * renders (the settle call will surface the real chain error).
+ */
+async function nextSettleEpochId(
+  epochs: readonly { id: number }[],
+): Promise<number> {
+  try {
+    return await getPlatformNextEpochId();
+  } catch (error) {
+    console.error("[sonata:audit] could not read platform next_epoch_id", {
+      reason: error instanceof Error ? error.message : String(error),
+    });
+    return nextEpochId(epochs);
+  }
+}
+
 async function AuditContent() {
+  await io();
+
   const [overview, epochs, songs] = await Promise.all([
     api.sonata.stats.overview(),
     api.sonata.epochs.list({ limit: 100 }),
@@ -43,7 +65,7 @@ async function AuditContent() {
     ? await api.sonata.epochs.byId({ id: latest.id })
     : null;
   const titles = new Map(songs.map((song) => [song.tokenId, song.title]));
-  const nextId = nextEpochId(epochs);
+  const nextId = await nextSettleEpochId(epochs);
   const totalSeconds = epochs.reduce(
     (sum, epoch) => sum + epoch.totalSeconds,
     0,
@@ -114,7 +136,8 @@ async function AuditContent() {
             </h2>
             <p className="text-sm leading-6 text-muted-foreground">
               Seeded demo history, shown as Demo 1–Demo 8. Real contract
-              settlements begin at epoch 0 and are listed alongside it.
+              settlements follow the chain's next epoch id and are listed
+              alongside it.
             </p>
           </div>
           <SettleEpochAction nextEpochId={nextId} />
