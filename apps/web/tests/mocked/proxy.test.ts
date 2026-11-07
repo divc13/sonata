@@ -218,6 +218,14 @@ describe("proxy detail route normalization", () => {
 
     expect(res.status).toBe(200);
   });
+
+  it("serves the real /artist/dashboard route instead of collapsing it", async () => {
+    const res = await proxy(
+      createNextRequest("http://localhost:3000/artist/dashboard"),
+    );
+
+    expect(res.status).toBe(200);
+  });
 });
 
 describe("proxy legacy artist tab URLs", () => {
