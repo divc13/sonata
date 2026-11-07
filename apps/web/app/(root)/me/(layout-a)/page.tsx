@@ -1,5 +1,4 @@
-import { Button } from "@infinitunes/ui/components/button";
-import { ListMusic, Plus } from "lucide-react";
+import { ListMusic } from "lucide-react";
 import React from "react";
 
 import { CatalogGrid } from "~/app/(root)/browse/_components/catalog-grid";
@@ -7,14 +6,13 @@ import {
   LibraryEmpty,
   LibraryHeading,
 } from "~/components/library/library-section";
+import { NewPlaylistButton } from "~/components/playlist/new-playlist-button";
 import { NewPlaylistCard } from "~/components/playlist/new-playlist-card";
-import { NewPlaylistForm } from "~/components/playlist/new-playlist-form";
 import {
   PendingPlaylistCards,
   PlaylistGate,
 } from "~/components/playlist/playlist-overlay";
 import { SliderCardSkeleton } from "~/components/slider/slider-card-skeleton";
-import { controlStyles } from "~/lib/control-styles";
 import { getUserPlaylists } from "~/lib/db/queries";
 
 import { PlaylistItem } from "./_components/playlist-item";
@@ -55,12 +53,7 @@ export default async function MyPlaylistsPage() {
           title="Create your first playlist"
           description="Collect songs you love into playlists you can play any time."
         >
-          <NewPlaylistForm>
-            <Button className={controlStyles.textLg}>
-              <Plus className="mr-1 size-4" />
-              Create Playlist
-            </Button>
-          </NewPlaylistForm>
+          <NewPlaylistButton />
         </LibraryEmpty>
       )}
     </section>
