@@ -1,190 +1,122 @@
-<div align=center>
+# Sonata
 
-<!-- labels -->
+**Every song is an account.**
 
-![][ci] ![][views] ![][stars] ![][forks] ![][issues] ![][license] ![][repo-size]
+Sonata is a subscription music platform where every master recording is a 1-of-1 NFT that owns its
+own keyless NEAR account. Listeners pay once per month for the whole catalog. Artists are paid a
+fixed dollar rate for every verified listening hour, directly into the song's account. The master can
+be sold, and its account, balance, and future income go with it.
 
-<!-- logo/title -->
+> **Status:** NEAR Hackathon 2026 `nfts` build in progress. The spec pack is complete and the
+> Infinitunes shell is imported. Contracts, Sonata data, and the new UI are being built against
+> `specs/`. This README will be updated with the live demo, contract addresses, and video before the
+> submission deadline (2026-11-14 23:59 UTC).
 
-<picture>
-  <source media="(prefers-color-scheme: dark, (max-width:300px))" srcset="./docs/assets/logo1920.png">
-  <source media="(prefers-color-scheme: light,(max-width:300px))" srcset="./docs/assets/logo1500.png">
-  <img src="./docs/assets/logo1920.png" width="300px" alt="infinitunes">
-</picture>
+## The model
 
-### [WIP] A Simple Music Player Web App made with Next.js + Tailwind.
+| Piece            | How it works                                                                               |
+| ---------------- | ------------------------------------------------------------------------------------------ |
+| **Master**       | One song, one 1-of-1 NFT. No fractions, no editions.                                       |
+| **Song account** | Each master owns `<slug>.masters.sonata.testnet`, a NEAR account with no keys.             |
+| **Pass**         | $5 for 30 days of unlimited listening. A non-transferable NFT.                             |
+| **Earnings**     | $0.03 per verified listening hour, paid in USDC directly to the song account.              |
+| **Cap**          | 4 verified hours per listener per day. Self-listens do not earn.                           |
+| **Reserve**      | The platform holds a 3-month reserve and cannot withdraw below it.                         |
+| **Resale**       | Fixed price. 5% to the creator, the rest to the seller. The account moves with the master. |
 
-<picture>
-  <source media="(prefers-color-scheme: light)" srcset="https://graph.org/file/12ea4beff2367f40f13ce.png">
-  <source media="(prefers-color-scheme: dark)" srcset="https://graph.org/file/16937ebb693470d804f31.png">
-  <img src="https://graph.org/file/12ea4beff2367f40f13ce.png" alt="infinitunes">
-</picture>
+The key property: the song account has no access keys. It can only pay the current owner of the
+master, checked on chain at withdrawal time. A seller cannot keep the income after a sale.
 
-**[<kbd> <br> &nbsp;**Live Demo**&nbsp; <br> </kbd>][site]**
+## Demo parameters
 
-## Building from Source
+| Parameter  | Value                                                           |
+| ---------- | --------------------------------------------------------------- |
+| Pass       | $5.00 / 30 days                                                 |
+| Rate `R`   | $0.03 per verified hour                                         |
+| Daily cap  | 4 hours                                                         |
+| Reserve    | 3 months target, pro-rata below 1 month                         |
+| Royalty    | 5% to the creator                                               |
+| Settlement | USDC on NEAR testnet, weekly in production, manual for the demo |
 
-</div>
+## Read the specs
 
-This is a Bun monorepo. The web app lives in `apps/web`.
+The build is spec-driven. Start here:
 
-### Prerequisites
+- [`specs/00-product.md`](specs/00-product.md): product, users, non-goals, pitch.
+- [`specs/01-architecture.md`](specs/01-architecture.md): system shape, data flow, repo layout.
+- [`specs/02-contracts.md`](specs/02-contracts.md): exact contract interfaces, events, errors.
+- [`specs/03-accounting.md`](specs/03-accounting.md): payout math, reserve, worked examples.
+- [`specs/04-threat-model.md`](specs/04-threat-model.md): what can go wrong and what stops it.
+- [`specs/05-design.md`](specs/05-design.md): brand, screens, copy, and UI rules.
+- [`specs/06-demo.md`](specs/06-demo.md): seed data and the 3-minute demo script.
+- [`specs/07-tasks.md`](specs/07-tasks.md): workstreams and acceptance criteria.
+- [`specs/decisions.md`](specs/decisions.md): the decision log.
 
-- [Bun](https://bun.sh) (v1.4.2)
-- [Docker](https://www.docker.com/)
+## Architecture at a glance
 
-### Quick Start
+```
+Browser (Next.js player) ── tRPC ── Postgres (catalog, listens, earnings)
+        │
+        └── NEAR RPC ── masters.sonata.testnet   (NEP-171 + song account creation)
+                        platform.sonata.testnet  (pass NFT, treasury, settlement)
+                        market.sonata.testnet    (fixed-price resale)
+                        usdc.sonata.testnet      (mock NEP-141, 6 decimals)
+                        <slug>.masters...        (keyless song accounts)
+```
 
-1. Clone repository and install dependencies:
+A settlement service aggregates verified listening seconds, publishes an audit bundle, and submits
+`platform.settle_epoch` as the oracle. An indexer writes contract events into Postgres for history
+views.
+
+## Local development
+
+Prerequisites: [Bun](https://bun.sh) 1.4.4, Docker, and Rust with the `wasm32-unknown-unknown` target
+for contracts.
 
 ```bash
-git clone https://github.com/rajput-hemant/infinitunes
-cd infinitunes
 bun install
-```
-
-2. Configure environment:
-
-```bash
 cp .env.example .env
-```
-
-3. Start local infrastructure (PostgreSQL 18 & Redis):
-
-```bash
 bun run db:up
-```
-
-4. Run migrations and seed deterministic local data:
-
-```bash
 bun run db:migrate
 bun run db:seed
-```
-
-5. Start the development server on host:
-
-```bash
 bun run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) and sign in with default credentials:
+Open http://localhost:3000. Local credentials: `local@example.test` / `LocalDev123!`.
 
-- **Email:** `local@example.test`
-- **Password:** `LocalDev123!`
+The upstream app expects `JIOSAAVN_DES_KEY` until the catalog replacement lands. Set a dummy value
+locally if you only need the shell to boot. The Sonata catalog does not use JioSaavn.
 
-For detailed architecture, table prefixing and configuration, see the [Local Development Guide](docs/local-development.md).
-
-### Useful Scripts
+### Useful scripts
 
 ```bash
-bun run db:up        # Start PostgreSQL & Redis in Docker
-bun run db:down      # Stop local infrastructure
-bun run db:migrate   # Run database migrations
-bun run db:seed      # Seed local deterministic data
-bun run dev          # Start Next.js development server
+bun run db:up        # PostgreSQL, Redis, adapter
+bun run db:migrate   # Apply migrations
+bun run db:seed      # Seed deterministic local data
+bun run dev          # Next.js dev server
+bun run type-check   # TypeScript
+bun run lint         # Oxlint
+bun run test         # Plain, mocked, and DOM suites
 bun run build        # Production build
-bun run lint         # Lint with Oxlint
-bun run fmt:check    # Check formatting with oxfmt
-bun run type-check   # Type check with TypeScript
-bun run test         # Run tests (plain + DOM suites)
 ```
 
-<div align=center>
+## Repository layout
 
-### Deploy Your Own
+```
+apps/web/           Next.js player and Sonata UI
+packages/           auth, db, env, trpc, types, ui, near (new)
+contracts/          master-nft, song-wallet, platform, market, mock-usdc
+services/           settlement oracle and event indexer (new)
+specs/              normative spec pack
+docs/               design system and upstream documentation
+```
 
-You can deploy your own hosted version of `infinitunes` to Vercel.
+## Built on Infinitunes
 
-#### Vercel Setup
-
-When importing the repository into Vercel, configure the following:
-
-| Setting              | Value           |
-| -------------------- | --------------- |
-| **Framework Preset** | Next.js         |
-| **Root Directory**   | `apps/web`      |
-| **Install Command**  | `bun install`   |
-| **Build Command**    | `bun run build` |
-| **Output Directory** | `.next`         |
-
-#### Required Environment Variables
-
-Set these in your Vercel project settings:
-
-| Variable                            | Description                                                                                            |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `AUTH_SECRET`                       | Secret for Better Auth sessions                                                                        |
-| `AUTH_URL`                          | Your deployed app URL (for Better Auth)                                                                |
-| `NEXT_PUBLIC_APP_URL`               | Public app URL (optional, fallback to default)                                                         |
-| `JIOSAAVN_DES_KEY`                  | DES key to decrypt JioSaavn media URLs                                                                 |
-| `GOOGLE_CLIENT_ID`                  | Google OAuth client ID (optional unless prod)                                                          |
-| `GOOGLE_CLIENT_SECRET`              | Google OAuth client secret (optional unless prod)                                                      |
-| `GITHUB_CLIENT_ID`                  | GitHub OAuth client ID (optional unless prod)                                                          |
-| `GITHUB_CLIENT_SECRET`              | GitHub OAuth client secret (optional unless prod)                                                      |
-| `DATABASE_URL`                      | PostgreSQL connection string                                                                           |
-| `UPSTASH_REDIS_REST_URL`            | Upstash Redis URL (optional, rate limiting)                                                            |
-| `UPSTASH_REDIS_REST_TOKEN`          | Upstash Redis token (optional, rate limiting)                                                          |
-| `ENABLE_RATE_LIMITING`              | `true`/`false` rate limiting toggle (default `false`)                                                  |
-| `TRUSTED_PROXY`                     | `vercel`, `true` or `false`: who may set client IP headers (default: `vercel` on Vercel, else `false`) |
-| `RATE_LIMITING_REQUESTS_PER_SECOND` | Rate limit per second (default `50`)                                                                   |
-| `UMAMI_WEBSITE_ID`                  | Umami analytics website ID (optional)                                                                  |
-| `RESEND_API_KEY`                    | [Resend](https://resend.com) key for password-reset email (see below)                                  |
-| `EMAIL_FROM`                        | Verified sender, e.g. `Infinitunes <no-reply@yourdomain.com>` (required with the key)                  |
-
-**Password reset email.** `/forgot-password` emails a single-use link (valid 1 hour; resetting signs out every device) via Resend's REST API. Without `RESEND_API_KEY` the link is printed to the server console in development; in production it fails closed: no email is sent, the error is logged (without the link) and the user still sees the generic "If an account exists..." message, so set both variables before deploying. The request endpoint is limited to 3 requests per minute per IP (Better Auth's in-memory limiter, production only, per server instance).
-
-[![Deploy with Vercel][deploy]][deploy-link]
-
-#### [JioSaavn API (Unofficial)][api] by [me][cc], [API Docs][api-docs]
-
-## Star History
-
-<a href="https://star-history.com/#rajput-hemant/infinitunes">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=rajput-hemant/infinitunes&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=rajput-hemant/infinitunes" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=rajput-hemant/infinitunes" />
- </picture>
-</a>
-
-## Disclaimer
-
-This project is independent of any affiliation with JioSaavn or its associated partners. It is created solely for educational purposes. Usage is at your own discretion, and the developer disclaims responsibility for any misuse or potential damage resulting from the use of this program. Please refrain from duplicating this project for commercial purposes.
+Sonata reuses the Infinitunes music player (MIT) by Hemant Rajput for its shell, design system, auth,
+and data tooling. The catalog, podcasts, radio, shows, mixes, and AI assistant are replaced. See
+[`NOTICE`](NOTICE) and [`LICENSE`](LICENSE).
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Contributors:
-
-[![][contributors]][contributors-graph]
-
-_Note: It may take up to 24h for the [contrib.rocks][contrib-rocks] plugin to update because it's refreshed once a day._
-
-</div>
-
-<!----------------------------------{ Labels }--------------------------------->
-
-[views]: https://komarev.com/ghpvc/?username=infinitunes&label=view%20counter&color=red&style=flat
-[repo-size]: https://img.shields.io/github/repo-size/rajput-hemant/infinitunes
-[issues]: https://img.shields.io/github/issues-raw/rajput-hemant/infinitunes
-[license]: https://img.shields.io/github/license/rajput-hemant/infinitunes
-[forks]: https://img.shields.io/github/forks/rajput-hemant/infinitunes?style=flat
-[stars]: https://img.shields.io/github/stars/rajput-hemant/infinitunes
-[contributors]: https://contrib.rocks/image?repo=rajput-hemant/infinitunes&max=500
-[contributors-graph]: https://github.com/rajput-hemant/infinitunes/graphs/contributors
-[contrib-rocks]: https://contrib.rocks/preview?repo=rajput-hemant%2Finfinitunes
-[ci]: https://github.com/rajput-hemant/infinitunes/actions/workflows/ci.yml/badge.svg
-
-<!-----------------------------------{ Links }---------------------------------->
-
-[site]: https://infinitunes.vercel.app
-[deploy]: https://vercel.com/button
-[deploy-link]: https://vercel.com/new/clone?repository-url=https://github.com/rajput-hemant/infinitunes&root-directory=apps%2Fweb&install-command=bun%20install&build-command=bun%20run%20build&env=AUTH_SECRET,AUTH_URL,JIOSAAVN_DES_KEY,GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET,GITHUB_CLIENT_ID,GITHUB_CLIENT_SECRET,DATABASE_URL&project-name=infinitunes&repo-name=infinitunes
-
-<!------------------------------------{ api }----------------------------------->
-
-[api]: https://github.com/rajput-hemant/jiosaavn-api-ts
-[api-docs]: https://docs-jiosaavn.netlify.app/
-[cc]: https://github.com/rajput-hemant
+MIT. See [`LICENSE`](LICENSE).
