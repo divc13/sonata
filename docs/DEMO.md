@@ -124,14 +124,16 @@ after-demo values from 2026-11-07 and will drift with gas use.
 Song accounts are `<token-id>.masters-sonata.testnet`, for example
 `midnight-drive.masters-sonata.testnet`. They are keyless and immutable.
 
-The adapter-facing contract ids are:
+The app defaults to these deployed ids in `packages/near/src/config.ts`; no
+override is needed for the demo. The optional server overrides are:
 
 ```bash
-NEXT_PUBLIC_NEAR_NETWORK=testnet
-NEXT_PUBLIC_MASTERS_CONTRACT=masters-sonata.testnet
-NEXT_PUBLIC_PLATFORM_CONTRACT=platform-sonata.testnet
-NEXT_PUBLIC_MARKET_CONTRACT=market-sonata.testnet
-NEXT_PUBLIC_USDC_CONTRACT=usdc-sonata.testnet
+SONATA_NEAR_RPC_URL=https://rpc.testnet.near.org
+SONATA_MASTERS_ID=masters-sonata.testnet
+SONATA_PLATFORM_ID=platform-sonata.testnet
+SONATA_MARKET_ID=market-sonata.testnet
+SONATA_USDC_ID=usdc-sonata.testnet
+SONATA_ORACLE_ID=oracle-sonata.testnet
 ```
 
 ## Before you record
