@@ -52,17 +52,23 @@ TX_DIR="$(mktemp -d "${TMPDIR:-/tmp}/sonata-mint-demo.XXXXXX")"
 run_tx() {
   local label="$1"
   shift
-  local log="$TX_DIR/$label.log" tx
+  local log="$TX_DIR/$label.log" tx status=0
   if [ -t 0 ] && [ -t 1 ]; then
-    "$@" 2>&1 | tee "$log"
+    "$@" 2>&1 | tee "$log" || status=$?
   elif [ "$(uname -s)" = "Darwin" ]; then
-    yes '' | script -q /dev/null "$@" 2>&1 | tee "$log"
+    # macOS `script` exits non-zero with "write master: Input/output error"
+    # once the child closes the pseudo-terminal, even when the transaction
+    # succeeded. Trust the printed transaction id, not the wrapper status.
+    yes '' | script -q /dev/null "$@" 2>&1 | tee "$log" || status=$?
   else
     die "near-cli-rs needs a TTY here; run from a terminal (keychain signing is macOS-only)"
   fi
   tx="$(tx_id_from_log "$log")"
   if [ -n "$tx" ]; then
     printf '    transaction: %s\n' "$tx"
+  elif [ "$status" -ne 0 ]; then
+    printf 'error: near exited %s without a transaction id\n' "$status" >&2
+    return 1
   else
     printf '    (no transaction id parsed; see the command output above)\n'
   fi
@@ -297,7 +303,7 @@ PY
       attached-deposit "$MINT_DEPOSIT" \
       sign-as "$artist" \
       network-config "$NETWORK" \
-      "$SIGN_WITH" send
+      "$SIGN_WITH" send || die "mint transaction for $token failed; see the output above"
 
     wait_for_token "$token" "$artist" ||
       die "mint of $token did not appear under $artist; inspect the transaction above"
@@ -331,7 +337,7 @@ ensure_listing() {
       attached-deposit "$APPROVAL_DEPOSIT" \
       sign-as "$artist" \
       network-config "$NETWORK" \
-      "$SIGN_WITH" send
+      "$SIGN_WITH" send || die "approval transaction for $token failed; see the output above"
   else
     say "$token is already approved for $MARKET_ACCOUNT"
   fi
@@ -358,7 +364,7 @@ ensure_listing() {
     attached-deposit "$LISTING_DEPOSIT" \
     sign-as "$artist" \
     network-config "$NETWORK" \
-    "$SIGN_WITH" send
+    "$SIGN_WITH" send || die "list transaction for $token failed; see the output above"
 
   wait_for_listing "$token" "$artist" "$price" ||
     die "listing for $token did not become active; inspect the transaction above"
@@ -392,7 +398,7 @@ buy_pass() {
     attached-deposit 1yoctoNEAR \
     sign-as "$LISTENER_ACCOUNT" \
     network-config "$NETWORK" \
-    "$SIGN_WITH" send
+    "$SIGN_WITH" send || die "pass transaction failed; see the output above"
 
   wait_for_pass || die "pass did not become active for $LISTENER_ACCOUNT"
 }

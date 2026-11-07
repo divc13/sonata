@@ -57,17 +57,23 @@ TX_DIR="$(mktemp -d "${TMPDIR:-/tmp}/sonata-platform-market.XXXXXX")"
 run_tx() {
   local label="$1"
   shift
-  local log="$TX_DIR/$label.log" tx
+  local log="$TX_DIR/$label.log" tx status=0
   if [ -t 0 ] && [ -t 1 ]; then
-    "$@" 2>&1 | tee "$log"
+    "$@" 2>&1 | tee "$log" || status=$?
   elif [ "$(uname -s)" = "Darwin" ]; then
-    yes '' | script -q /dev/null "$@" 2>&1 | tee "$log"
+    # macOS `script` exits non-zero with "write master: Input/output error"
+    # once the child closes the pseudo-terminal, even when the transaction
+    # succeeded. Trust the printed transaction id, not the wrapper status.
+    yes '' | script -q /dev/null "$@" 2>&1 | tee "$log" || status=$?
   else
     die "near-cli-rs needs a TTY here; run from a terminal (keychain signing is macOS-only)"
   fi
   tx="$(tx_id_from_log "$log")"
   if [ -n "$tx" ]; then
     printf '    transaction: %s\n' "$tx"
+  elif [ "$status" -ne 0 ]; then
+    printf 'error: near exited %s without a transaction id\n' "$status" >&2
+    return 1
   else
     printf '    (no transaction id parsed; see the command output above)\n'
   fi
@@ -119,6 +125,51 @@ account_has_code() {
     -H 'Content-Type: application/json' \
     -d "{\"jsonrpc\":\"2.0\",\"id\":\"sonata-platform-market\",\"method\":\"query\",\"params\":{\"request_type\":\"view_code\",\"finality\":\"final\",\"account_id\":\"$account\"}}") || return 1
   printf '%s' "$body" | grep -q '"code_base64":"[A-Za-z0-9+/]'
+}
+
+account_balance() {
+  local account="$1" body
+  body=$(curl -fsS -X POST "$RPC_URL" \
+    -H 'Content-Type: application/json' \
+    -d "{\"jsonrpc\":\"2.0\",\"id\":\"sonata-platform-market\",\"method\":\"query\",\"params\":{\"request_type\":\"view_account\",\"finality\":\"final\",\"account_id\":\"$account\"}}") || return 2
+  printf '%s' "$body" | python3 -c '
+import json, sys
+response = json.load(sys.stdin)
+if "error" in response:
+    sys.exit(3)
+print(response["result"]["amount"])
+'
+}
+
+# A deploy needs the wasm code storage plus the attached USDC storage deposit.
+# Testnet storage is 1e19 yoctoNEAR per byte; 0.25 NEAR is headroom for the
+# account, the init-call receipt and the fee so the RPC pre-check passes.
+ensure_deploy_balance() {
+  local account="$1" wasm="$2" size required balance shortfall
+  size=$(wc -c <"$wasm" | tr -d ' ')
+  required=$(python3 - "$size" <<'PY'
+import sys
+size = int(sys.argv[1])
+storage = size * 10**19
+deposit = 50_000_000_000_000_000_000_000  # 0.05 NEAR
+headroom = 250_000_000_000_000_000_000_000  # 0.25 NEAR
+print(storage + deposit + headroom)
+PY
+)
+  balance=$(account_balance "$account") ||
+    die "could not read the balance of $account (does the account exist?)"
+  if [ "$balance" -lt "$required" ]; then
+    shortfall=$(python3 - "$required" "$balance" <<'PY'
+import sys
+required, balance = (int(value) for value in sys.argv[1:])
+print(f"{(required - balance) / 10**24:.4f}")
+PY
+)
+    die "$account has $(python3 -c "print(f'{int($balance) / 10**24:.4f}')") NEAR; deploying $(basename "$wasm") needs $(python3 -c "print(f'{int($required) / 10**24:.4f}')") NEAR. Top up at least $shortfall NEAR (e.g. near tokens market-sonata.testnet send-near $account '2 NEAR' network-config testnet sign-with-keychain send) and re-run."
+  fi
+  printf '  %-22s %s NEAR (need >= %s)\n' "balance" \
+    "$(python3 -c "print(f'{int($balance) / 10**24:.4f}')")" \
+    "$(python3 -c "print(f'{int($required) / 10**24:.4f}')")"
 }
 
 wait_for_code() {
@@ -244,6 +295,7 @@ deploy_platform() {
   fi
 
   say "Deploying platform to $PLATFORM_ACCOUNT (attached $DEPLOY_DEPOSIT)"
+  ensure_deploy_balance "$PLATFORM_ACCOUNT" "$PLATFORM_WASM"
   run_tx platform near contract deploy "$PLATFORM_ACCOUNT" \
     use-file "$PLATFORM_WASM" \
     with-init-call new json-args "$(platform_args)" \
@@ -262,6 +314,7 @@ deploy_market() {
   fi
 
   say "Deploying market to $MARKET_ACCOUNT (attached $DEPLOY_DEPOSIT)"
+  ensure_deploy_balance "$MARKET_ACCOUNT" "$MARKET_WASM"
   run_tx market near contract deploy "$MARKET_ACCOUNT" \
     use-file "$MARKET_WASM" \
     with-init-call new json-args "$(market_args)" \
