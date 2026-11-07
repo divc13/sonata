@@ -1,3 +1,4 @@
+import { RATE_PER_HOUR_USDC_MICRO } from "@infinitunes/near";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -305,9 +306,9 @@ export default function AuditPage() {
           </h1>
           <p className="text-sm leading-6 text-muted-foreground">
             Listening is measured in verified hours. Each epoch, the platform
-            pays a fixed {formatRatePerHour("30000")} from its reserve, and
-            every song account is paid once. Nothing is hidden behind a
-            dashboard.{" "}
+            pays a fixed {formatRatePerHour(RATE_PER_HOUR_USDC_MICRO)} from its
+            reserve, and every song account is paid once. Nothing is hidden
+            behind a dashboard.{" "}
             <Link
               href="/artist/dashboard"
               className="font-medium text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
