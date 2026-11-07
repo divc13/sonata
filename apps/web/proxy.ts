@@ -5,7 +5,7 @@ import { getSessionCookie } from "better-auth/cookies";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-import { appRoutes, userRoutes } from "./config/routes";
+import { appRoutes, nestedAppRoutes, userRoutes } from "./config/routes";
 import { legacyArtistPath } from "./lib/artist-route";
 import { getClientKey, resolveTrustedProxy } from "./lib/client-ip";
 import { buildCsp, cspHeaderName } from "./lib/csp";
@@ -129,7 +129,11 @@ export async function proxy(req: NextRequest) {
 
   const paths = pathname.split("/").slice(1);
 
-  if (paths.length === 2 && appRoutes.includes(`/${paths[0]}`)) {
+  if (
+    paths.length === 2 &&
+    appRoutes.includes(`/${paths[0]}`) &&
+    !nestedAppRoutes.includes(pathname)
+  ) {
     return NextResponse.redirect(new URL(`/${paths[0]}`, nextUrl));
   }
 
