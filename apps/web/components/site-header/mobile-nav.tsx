@@ -25,8 +25,9 @@ type Tab = { label: string; icon: LucideIcon; href: Route };
 const primaryTabs: Tab[] = [
   { label: "Home", icon: Home, href: "/" },
   { label: "Search", icon: Search, href: "/search" },
-  { label: "Market", icon: Store, href: "/market" },
 ];
+
+const marketTab: Tab = { label: "Market", icon: Store, href: "/market" };
 
 const youTab: Tab = { label: "You", icon: User2, href: "/me" };
 const loginTab: Tab = { label: "You", icon: User2, href: "/login" };
@@ -102,6 +103,8 @@ function MobileNavBar({
         <Library aria-hidden className="size-6" />
         <span>Library</span>
       </button>
+
+      <TabLink tab={marketTab} pathname={pathname} />
 
       {pending ? (
         <div aria-hidden className={cn(itemClassName, "pointer-events-none")}>

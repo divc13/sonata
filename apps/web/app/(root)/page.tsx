@@ -1,145 +1,207 @@
-import type { MediaType } from "@infinitunes/types";
-import { decode, getImageSrc, parseToken, uniqueBy } from "@infinitunes/types";
+import { Badge } from "@infinitunes/ui/components/badge";
+import { Play } from "lucide-react";
+import Link from "next/link";
 
-import { Shelf } from "~/components/slider/shelf";
-import { ShelfItem } from "~/components/slider/shelf-item";
-import { SliderCard } from "~/components/slider/slider-card";
-import { siteConfig } from "~/config/site";
+import { ImageWithFallback } from "~/components/image-with-fallback";
+import { MasterCard } from "~/components/sonata/master-card";
+import { PassStrip } from "~/components/sonata/pass-strip";
+import { PlayMaster } from "~/components/sonata/play-master";
+import { SectionHeading } from "~/components/sonata/section-heading";
 import { pageMetadata } from "~/lib/metadata";
-import { api } from "~/lib/trpc/server";
-import { getHref } from "~/lib/utils";
-
-import { HomeHeader } from "./_components/home-header";
-import { HomeHero } from "./_components/home-hero";
-import type { HeroTile } from "./_components/home-hero";
-import { homeItems } from "./_components/home-items";
-import { QuickPicks } from "./_components/quick-picks";
-import type { QuickPickItem } from "./_components/quick-picks";
-
-const title = `Online Songs on ${siteConfig.name}: Download & Play Latest Music for Free`;
-
-const description = `Listen to Latest and Trending Bollywood Hindi songs online for free with ${siteConfig.name} anytime, anywhere. Download or listen to unlimited new & old Hindi songs online. Search from most trending, weekly top 15, Hindi movie songs, etc on ${siteConfig.name}`;
+import {
+  demoMasters,
+  earnings30d,
+  formatUsd,
+  masterByToken,
+  masterHref,
+  newReleases,
+  RATE_PER_HOUR,
+  topEarners,
+} from "~/lib/sonata-demo";
 
 export const metadata = pageMetadata({
-  title,
-  description,
+  title: "Sonata — every song is an account",
+  description:
+    "A premium player where each master is 1 of 1. Listen by the hour, own the recording, and its account comes with it.",
   url: "/",
-  alt: `${siteConfig.name} Homepage`,
+  alt: "Sonata, a premium player where every song is an account",
 });
 
-/** Sections that are not card lists. */
-const SKIPPED_SECTIONS = new Set([
-  "modules",
-  "global_config",
-  "browse_discover",
-]);
+export default function HomePage() {
+  const featured = masterByToken("midnight-drive") ?? demoMasters[0];
 
-/** Sections laid out as a two-row horizontal grid. */
-const GRID_SECTIONS = new Set(["trending", "new_albums", "charts"]);
-
-/** Fallback card type for sections whose items carry no `type`. */
-const SECTION_TYPE: Record<string, MediaType> = {
-  new_albums: "album",
-  charts: "playlist",
-  top_playlists: "playlist",
-  radio: "radio_station",
-};
-
-const QUICK_PICK_ALBUMS = 4;
-const QUICK_PICK_PLAYLISTS = 4;
-const HERO_TILES = 4;
-
-export default async function HomePage() {
-  const homedata = await api.home.home({});
-
-  const featured = homedata.top_playlists[0];
-  const quickPicks: QuickPickItem[] = [
-    ...homedata.new_albums.slice(0, QUICK_PICK_ALBUMS),
-    ...homedata.top_playlists.slice(1, 1 + QUICK_PICK_PLAYLISTS),
-  ].map((item) => ({
-    key: `${item.type}-${item.id}`,
-    href: getHref(item.perma_url, item.type),
-    title: decode(item.title),
-    image: getImageSrc(item.image, "high"),
-    type: item.type,
-    token: parseToken(item.perma_url),
-  }));
-
-  const heroTiles: HeroTile[] = [
-    ...(homedata.charts ?? []),
-    ...homedata.top_playlists.slice(1 + QUICK_PICK_PLAYLISTS),
-  ]
-    .slice(0, HERO_TILES)
-    .map((item) => ({
-      key: `${item.type}-${item.id}`,
-      href: getHref(item.perma_url, item.type),
-      title: decode(item.title),
-      image: item.image,
-      type: item.type,
-      token: parseToken(item.perma_url),
-    }));
+  if (!featured) {
+    return (
+      <section className="flex max-w-xl flex-col items-start gap-4 rounded-2xl border border-border/60 bg-card p-8">
+        <h1 className="font-heading text-2xl font-bold tracking-[-0.02em]">
+          The catalog is being pressed
+        </h1>
+        <p className="text-sm leading-6 text-muted-foreground">
+          The first masters arrive shortly. If you have a recording, publish it
+          and its song account starts earning from the first verified hour.
+        </p>
+      </section>
+    );
+  }
 
   return (
-    <div className="flex flex-col gap-(--page-gap)">
-      <HomeHeader />
-
-      {(featured || quickPicks.length > 0) && (
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
-          {featured && <HomeHero playlist={featured} tiles={heroTiles} />}
-
-          {quickPicks.length > 0 && <QuickPicks items={quickPicks} />}
+    <div className="flex flex-col gap-10 sm:gap-12">
+      <section
+        data-morph="song"
+        aria-labelledby="home-hero-title"
+        className="relative isolate overflow-hidden rounded-2xl border border-border/60 bg-card"
+      >
+        <div aria-hidden="true" className="absolute inset-0 -z-10">
+          <ImageWithFallback
+            src={featured.coverUrl}
+            fallback="/images/placeholder/song.jpg"
+            alt=""
+            fill
+            sizes="100vw"
+            priority
+            className="scale-110 object-cover opacity-30 blur-2xl"
+          />
+          <div className="absolute inset-0 bg-background/65" />
         </div>
-      )}
 
-      {Object.entries(homedata).map(([key, section]) => {
-        const items = SKIPPED_SECTIONS.has(key) ? null : homeItems(section);
-        if (!items?.length) return null;
+        <div className="grid items-center gap-7 p-5 sm:p-8 md:grid-cols-[minmax(0,1fr)_minmax(0,19rem)] lg:gap-12 lg:p-10">
+          <div className="flex min-w-0 flex-col items-start gap-5">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Badge variant="outline">Master</Badge>
+              <Badge variant="outline">1 of 1</Badge>
+              <Badge
+                variant="outline"
+                className="border-primary/40 text-primary"
+              >
+                For sale · {formatUsd(featured.priceUsd ?? 0)}
+              </Badge>
+            </div>
 
-        const sectionTitle = homedata.modules?.[key]?.title;
+            <div className="min-w-0">
+              <h1
+                id="home-hero-title"
+                className="font-heading text-4xl leading-[1.02] font-bold tracking-[-0.035em] sm:text-5xl lg:text-6xl"
+              >
+                {featured.title}
+              </h1>
+              <p className="mt-3 text-base text-muted-foreground sm:text-lg">
+                {featured.artistName}{" "}
+                <span className="text-muted-foreground/70">
+                  {featured.artistHandle}
+                </span>
+              </p>
+            </div>
 
-        return (
-          <section key={key}>
-            <Shelf
-              rows={GRID_SECTIONS.has(key) ? 2 : 1}
-              heading={
-                sectionTitle && (
-                  <h2 className="font-heading text-xl leading-7 font-bold tracking-[-0.015em] text-foreground">
-                    {decode(sectionTitle)}
-                  </h2>
-                )
-              }
+            <p className="max-w-md text-sm leading-6 text-muted-foreground">
+              {featured.description}
+            </p>
+
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+              <PlayMaster
+                tokenId={featured.tokenId}
+                title={featured.title}
+                artistName={featured.artistName}
+                artistHandle={featured.artistHandle}
+                coverUrl={featured.coverUrl}
+                audioUrl={featured.audioUrl}
+                durationSec={featured.durationSec}
+              />
+              <p className="text-sm text-muted-foreground tabular-nums">
+                Earns {formatUsd(RATE_PER_HOUR)} per verified hour
+              </p>
+            </div>
+
+            <Link
+              href={masterHref(featured.tokenId)}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             >
-              {uniqueBy(items, (item) => item.id || item.title).map(
-                ({
-                  id,
-                  title: itemTitle,
-                  perma_url,
-                  subtitle,
-                  type: itemType,
-                  image,
-                  explicit_content,
-                }) => {
-                  const effectiveType =
-                    itemType || SECTION_TYPE[key] || "playlist";
+              <Play aria-hidden="true" className="size-3.5" />
+              View the master
+            </Link>
+          </div>
 
-                  return (
-                    <ShelfItem key={id || itemTitle}>
-                      <SliderCard
-                        name={itemTitle}
-                        url={perma_url}
-                        subtitle={subtitle}
-                        type={effectiveType}
-                        image={image}
-                        explicit={explicit_content}
-                      />
-                    </ShelfItem>
-                  );
-                },
-              )}
-            </Shelf>
-          </section>
-        );
-      })}
+          <Link
+            href={masterHref(featured.tokenId)}
+            aria-label={`View ${featured.title}`}
+            data-morph-art=""
+            className="relative mx-auto aspect-square w-full max-w-64 overflow-hidden rounded-xl bg-fill shadow-md ring-1 ring-foreground/10 outline-none focus-visible:ring-2 focus-visible:ring-ring md:max-w-none"
+          >
+            <ImageWithFallback
+              src={featured.coverUrl}
+              fallback="/images/placeholder/song.jpg"
+              alt=""
+              width={600}
+              height={600}
+              sizes="(min-width: 768px) 300px, 60vw"
+              priority
+              className="size-full object-cover"
+            />
+          </Link>
+        </div>
+      </section>
+
+      <PassStrip />
+
+      <section className="flex flex-col gap-5">
+        <SectionHeading
+          title="Top earning masters"
+          description="The recordings people return to, and what they paid last month."
+          action={{ label: "Browse the market", href: "/market" }}
+        />
+        <ul className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-6">
+          {topEarners.map((master, index) => (
+            <li key={master.tokenId} className="min-w-0">
+              <MasterCard
+                title={master.title}
+                artist={master.artistName}
+                coverUrl={master.coverUrl}
+                href={masterHref(master.tokenId)}
+                earnings={formatUsd(earnings30d(master))}
+                priority={index < 3}
+              />
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="flex flex-col gap-5">
+        <SectionHeading
+          title="New releases"
+          description="Freshly pressed masters from the artists on Sonata."
+        />
+        <ul className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">
+          {newReleases.map((master) => (
+            <li key={master.tokenId} className="min-w-0">
+              <MasterCard
+                title={master.title}
+                artist={master.artistName}
+                coverUrl={master.coverUrl}
+                href={masterHref(master.tokenId)}
+                price={master.priceUsd ? formatUsd(master.priceUsd) : undefined}
+              />
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="flex flex-col gap-3 border-t border-border/60 pt-8 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
+        <div className="max-w-xl">
+          <h2 className="font-heading text-lg font-bold tracking-[-0.015em]">
+            From the label
+          </h2>
+          <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
+            Every master is one recording, owned by one person. Listening pays
+            its song account by the verified hour, and the account moves with
+            the recording when it changes hands.
+          </p>
+        </div>
+        <Link
+          href="/audit"
+          className="shrink-0 text-sm font-medium text-muted-foreground underline decoration-border underline-offset-4 transition-colors hover:text-foreground hover:decoration-foreground"
+        >
+          How the money works
+        </Link>
+      </section>
     </div>
   );
 }

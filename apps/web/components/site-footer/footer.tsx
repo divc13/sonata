@@ -17,6 +17,9 @@ export function SiteFooter() {
       </span>
 
       <nav aria-label="Footer" className="flex flex-wrap gap-x-4">
+        <Link href="/audit" className={linkClassName}>
+          How the money works
+        </Link>
         <Link href="/privacy" className={linkClassName}>
           Privacy
         </Link>
