@@ -236,7 +236,9 @@ export async function seedSonata(db: DbClient) {
           /* The demo sells midnight-drive from its creator's wallet. */
           creatorAccountId: artist.accountId,
           ownerAccountId: artist.accountId,
-          subAccount: `${song.tokenId}.masters-sonata.testnet`,
+          /* The rescue replaced every original song account with a `-v2`
+           * wallet; a fresh database must match the live payout mapping. */
+          subAccount: `${song.tokenId}-v2.masters-sonata.testnet`,
           coverUrl: `/demo/covers/${song.tokenId}.webp`,
           audioUrl: `/demo/audio/${song.tokenId}.m4a`,
           durationSec: song.durationSec,

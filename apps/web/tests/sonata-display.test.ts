@@ -60,6 +60,9 @@ describe("next epoch calculation", () => {
 
   it("ignores seeded demo history with negative ids", () => {
     expect(nextEpochId([{ id: -1 }, { id: -8 }, { id: -3 }])).toBe(0);
+    expect(
+      nextEpochId([-1, -2, -3, -4, -5, -6, -7, -8].map((id) => ({ id }))),
+    ).toBe(0);
     expect(nextEpochId([{ id: -8 }, { id: 0 }])).toBe(1);
   });
 
