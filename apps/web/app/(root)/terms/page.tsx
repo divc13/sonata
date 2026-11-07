@@ -1,7 +1,7 @@
 import { pageMetadata } from "~/lib/metadata";
 
 const title = "Terms of Service";
-const description = "The terms governing use of Infinitunes.";
+const description = "The terms governing use of Sonata.";
 
 export const metadata = pageMetadata({
   title,
@@ -22,9 +22,9 @@ export default function TermsPage() {
       </p>
 
       <p className="text-sm leading-5 text-muted-foreground">
-        By using Infinitunes you agree to use the service lawfully, to respect
-        the rights of artists and rights holders, and to accept that all media
-        shown here belongs to its respective owners.
+        By using Sonata you agree to use the service lawfully, to respect the
+        rights of artists and rights holders, and to accept that all media shown
+        here belongs to its respective owners.
       </p>
     </div>
   );

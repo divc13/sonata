@@ -7,7 +7,7 @@ import { TopSearches } from "./_components/top-searches";
 export const metadata = pageMetadata({
   title: "Search",
   description:
-    "Search songs, albums, artists, playlists and podcasts on Infinitunes.",
+    "Search songs, albums, artists, playlists, and masters on Sonata.",
   url: "/search",
 });
 
