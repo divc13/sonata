@@ -1187,6 +1187,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "market"
+version = "0.1.0"
+dependencies = [
+ "near-sdk",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "master-nft"
 version = "0.1.0"
 dependencies = [

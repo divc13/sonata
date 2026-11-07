@@ -30,6 +30,9 @@ next-env.d.ts
 # turbo
 .turbo
 
+# rust build output
+contracts/target
+
 # old bun binary lockfile (migrated to bun.lock)
 bun.lockb
 

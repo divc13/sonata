@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["mock-usdc", "song-wallet", "master-nft"]
+members = ["mock-usdc", "song-wallet", "master-nft", "market"]
 
 [workspace.package]
 version = "0.1.0"
