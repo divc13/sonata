@@ -33,12 +33,13 @@ export function MarketControls() {
         ))}
       </div>
 
-      <div
-        role="group"
+      <fieldset
         aria-label="Sort listings"
-        className="flex items-center gap-1"
+        className="flex min-w-0 items-center gap-1 border-0 p-0"
       >
-        <span className="mr-1 text-xs text-muted-foreground">Sort</span>
+        <span aria-hidden="true" className="mr-1 text-xs text-muted-foreground">
+          Sort
+        </span>
         {sorts.map((item) => (
           <button
             key={item}
@@ -50,7 +51,7 @@ export function MarketControls() {
             {item}
           </button>
         ))}
-      </div>
+      </fieldset>
     </div>
   );
 }
