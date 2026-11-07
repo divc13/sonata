@@ -6,7 +6,11 @@
  * allowed to feed a float back into a money calculation.
  */
 import { microUsdcToUsd } from "@infinitunes/near";
-import type { SonataEpochSummary, SonataPayoutRow } from "@infinitunes/types";
+import type {
+  SonataEpochSummary,
+  SonataPassCache,
+  SonataPayoutRow,
+} from "@infinitunes/types";
 
 /** `"50000000"` micro-USDC -> `"$50.00"`. */
 export function formatMicroUsd(micro: string | null | undefined): string {
@@ -61,6 +65,66 @@ export function formatEpochRange(
   epoch: Pick<SonataEpochSummary, "startedAt" | "closedAt">,
 ): string {
   return `${formatEpochDate(epoch.startedAt)} – ${formatEpochDate(epoch.closedAt)}`;
+}
+
+const DAY_MS = 86_400_000;
+
+export type PassStatus = "active" | "expired" | "none";
+
+/**
+ * A pass is active only while its expiry is strictly in the future. The chain
+ * treats an expiry equal to now as expired, so the cache does too.
+ */
+export function passStatus(
+  pass: Pick<SonataPassCache, "expiresAt"> | null | undefined,
+  now: Date,
+): PassStatus {
+  if (!pass) return "none";
+  return pass.expiresAt.getTime() > now.getTime() ? "active" : "expired";
+}
+
+export function passStatusLabel(status: PassStatus): string {
+  switch (status) {
+    case "active":
+      return "Pass active";
+    case "expired":
+      return "Pass ended";
+    case "none":
+      return "Free tier";
+  }
+}
+
+/** Whole days left, counting a started day; 0 once the pass has expired. */
+export function passDaysRemaining(expiresAt: Date, now: Date): number {
+  const remaining = expiresAt.getTime() - now.getTime();
+  if (remaining <= 0) return 0;
+  return Math.ceil(remaining / DAY_MS);
+}
+
+const passDate = new Intl.DateTimeFormat("en-US", {
+  month: "long",
+  day: "numeric",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+/** Stable UTC expiry label, e.g. `December 1, 2026`. */
+export function formatPassDate(date: Date): string {
+  return passDate.format(date);
+}
+
+/**
+ * Rounded cents per day for a pass, using integer micro-USDC. `$5.00` over 30
+ * days is 17 cents a day; the last fraction of a cent is rounded up.
+ */
+export function passDailyPriceCents(
+  priceMicro: string,
+  durationDays: number,
+): number {
+  if (durationDays <= 0) return 0;
+  const denominator = BigInt(durationDays) * 1_000_000n;
+  const numerator = BigInt(priceMicro) * 100n;
+  return Number((numerator + denominator / 2n) / denominator);
 }
 
 /** Cuts a settlement root or transaction hash down to a readable proof label. */
