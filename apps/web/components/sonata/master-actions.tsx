@@ -140,8 +140,8 @@ export function MasterActions({
               : `Buy for ${formatUsdMicro2(listingPriceUsdc)}`}
           </button>
           <p className="text-[0.6875rem] leading-4 text-muted-foreground">
-            Buys as <span className="font-mono">collector</span> (
-            {BUYER_ACCOUNT}).
+            Buys as <span className="font-mono">collector</span>{" "}
+            <span className="font-mono">{BUYER_ACCOUNT}</span>
           </p>
         </div>
       ) : null}
@@ -176,8 +176,8 @@ export function MasterActions({
             </button>
           </div>
           <p className="text-[0.6875rem] leading-4 text-muted-foreground">
-            Lists as <span className="font-mono">nadia</span> ({ownerAccountId}
-            ).
+            Lists as <span className="font-mono">nadia</span>{" "}
+            <span className="font-mono">{ownerAccountId}</span>
           </p>
         </div>
       ) : null}
@@ -193,8 +193,8 @@ export function MasterActions({
             {pending === "withdraw" ? "Withdrawing…" : "Withdraw earnings"}
           </button>
           <p className="text-[0.6875rem] leading-4 text-muted-foreground">
-            Withdraws as <span className="font-mono">{ownerRole}</span> (
-            {ownerAccountId}).
+            Withdraws as <span className="font-mono">{ownerRole}</span>{" "}
+            <span className="font-mono">{ownerAccountId}</span>
           </p>
         </div>
       ) : null}
