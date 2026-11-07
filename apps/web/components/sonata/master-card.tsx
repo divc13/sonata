@@ -59,7 +59,7 @@ export function MasterCard({
             className="size-full object-cover transition-transform duration-slow ease-out group-hover:scale-105"
           />
           {price ? (
-            <span className="absolute right-2.5 bottom-2.5 rounded-lg bg-background/90 px-2.5 py-1 text-xs font-semibold text-foreground tabular-nums shadow-sm backdrop-blur-sm">
+            <span className="absolute right-2.5 bottom-2.5 rounded-lg border border-border/60 bg-background px-2.5 py-1 text-xs font-semibold text-foreground tabular-nums shadow-sm">
               {price}
             </span>
           ) : null}
