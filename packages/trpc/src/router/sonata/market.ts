@@ -1,6 +1,8 @@
+import type { DbClient } from "@infinitunes/db/client";
 import { sonataListing, sonataSong } from "@infinitunes/db/schema";
-import { DEMO_ROLES, type ChainResult } from "@infinitunes/near";
+import { DEMO_ROLES } from "@infinitunes/near";
 import type { SonataListingWithSong } from "@infinitunes/types";
+import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -13,6 +15,51 @@ import {
 import { withEarnings } from "./helpers";
 import { microUsdcInput, tokenIdInput } from "./inputs";
 import { LISTING_SORTS, sortListings } from "./market-helpers";
+import {
+  bestEffortSync,
+  cachedOwnerAccountId,
+  roleToAccountId,
+  syncMarketListing,
+  syncMarketSale,
+  type SonataMutationResult,
+} from "./sync";
+
+/**
+ * Fail early when Postgres clearly disagrees with the chain. A read failure
+ * (database unavailable) does not block the chain call: the contract enforces
+ * ownership, and the cache is healed by the sync/indexer later.
+ */
+async function assertCachedListingOwner(
+  db: DbClient,
+  tokenId: string,
+  sellerAccountId: string,
+): Promise<void> {
+  let cachedOwner: string | null;
+
+  try {
+    cachedOwner = await cachedOwnerAccountId(db, tokenId);
+  } catch (error) {
+    console.error("[sonata:sync] could not preflight listing ownership", {
+      tokenId,
+      reason: error instanceof Error ? error.message : String(error),
+    });
+    return;
+  }
+
+  if (cachedOwner === null) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: `Master "${tokenId}" is not in the local cache yet. Wait for the indexer to catch up, then retry the listing.`,
+    });
+  }
+
+  if (cachedOwner !== sellerAccountId) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: `The local cache says "${tokenId}" is owned by ${cachedOwner}, not ${sellerAccountId}. Refetch the master before listing it.`,
+    });
+  }
+}
 
 const listingInput = z.object({
   /** `recent`, `price-asc` or `price-desc`. */
@@ -84,15 +131,27 @@ export const sonataMarketRouter = router({
         expectedPriceUsdc: microUsdcInput,
       }),
     )
-    .output(z.custom<ChainResult>())
+    .output(z.custom<SonataMutationResult>())
     .mutation(async ({ input, ctx }) => {
       assertSonataDemoMode();
 
       try {
-        return await sonataChainFor(ctx).buyMaster(
+        const result = await sonataChainFor(ctx).buyMaster(
           input.role,
           input.tokenId,
           input.expectedPriceUsdc,
+        );
+
+        return await bestEffortSync(
+          result,
+          { action: "market.buy", tokenId: input.tokenId },
+          () =>
+            syncMarketSale(ctx.db, {
+              tokenId: input.tokenId,
+              buyerRole: input.role,
+              priceUsdc: input.expectedPriceUsdc,
+              txHash: result.txHash,
+            }),
         );
       } catch (error) {
         rethrowSonataError(error);
@@ -108,15 +167,32 @@ export const sonataMarketRouter = router({
         priceUsdc: microUsdcInput,
       }),
     )
-    .output(z.custom<ChainResult>())
+    .output(z.custom<SonataMutationResult>())
     .mutation(async ({ input, ctx }) => {
       assertSonataDemoMode();
+      await assertCachedListingOwner(
+        ctx.db,
+        input.tokenId,
+        roleToAccountId(input.role),
+      );
 
       try {
-        return await sonataChainFor(ctx).listMaster(
+        const result = await sonataChainFor(ctx).listMaster(
           input.role,
           input.tokenId,
           input.priceUsdc,
+        );
+
+        return await bestEffortSync(
+          result,
+          { action: "market.list", tokenId: input.tokenId },
+          () =>
+            syncMarketListing(ctx.db, {
+              tokenId: input.tokenId,
+              sellerRole: input.role,
+              priceUsdc: input.priceUsdc,
+              txHash: result.txHash,
+            }),
         );
       } catch (error) {
         rethrowSonataError(error);

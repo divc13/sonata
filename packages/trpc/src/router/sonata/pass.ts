@@ -1,5 +1,4 @@
 import { sonataPass } from "@infinitunes/db/schema";
-import type { ChainResult } from "@infinitunes/near";
 import type { SonataPassCache } from "@infinitunes/types";
 import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -10,6 +9,11 @@ import {
   rethrowSonataError,
   sonataChainFor,
 } from "./demo";
+import {
+  bestEffortSync,
+  syncPassPurchase,
+  type SonataMutationResult,
+} from "./sync";
 
 /**
  * DB cache of pass purchases. The chain (`platform.pass_expiry`) is the source
@@ -33,17 +37,24 @@ export const sonataPassRouter = router({
 
   /**
    * Demo-only pass purchase with the server-side listener signer. The chain
-   * contract is the source of truth; the caller should refetch `byAccount` (or
-   * `platform.pass_expiry`) after the transaction lands.
+   * contract is the source of truth; the cache follows the landed transaction
+   * best-effort and reports `synced: false` instead of hiding a success.
    */
   buy: publicProcedure
     .input(z.object({ role: z.literal("listener") }))
-    .output(z.custom<ChainResult>())
+    .output(z.custom<SonataMutationResult>())
     .mutation(async ({ input, ctx }) => {
       assertSonataDemoMode();
 
       try {
-        return await sonataChainFor(ctx).buyPass(input.role);
+        const result = await sonataChainFor(ctx).buyPass(input.role);
+
+        return await bestEffortSync(result, { action: "pass.buy" }, () =>
+          syncPassPurchase(ctx.db, {
+            role: input.role,
+            txHash: result.txHash,
+          }),
+        );
       } catch (error) {
         rethrowSonataError(error);
       }
