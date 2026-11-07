@@ -49,6 +49,16 @@ export {
   shortAccount,
 } from "./format";
 export {
+  buildSettleEpochCall,
+  createSettlementChain,
+  SETTLEMENT_GAS,
+  settlementChain,
+} from "./settlement";
+export type {
+  SettlementChain,
+  SettlementChainDependencies,
+} from "./settlement";
+export {
   assertMicroUsdc,
   buildBuyCall,
   buildFtTransferCallArgs,

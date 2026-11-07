@@ -71,6 +71,13 @@
       "when": 1794054511096,
       "tag": "0009_thankful_marvel_apes",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794060577125,
+      "tag": "0010_nebulous_yellow_claw",
+      "breakpoints": true
     }
   ]
 }
