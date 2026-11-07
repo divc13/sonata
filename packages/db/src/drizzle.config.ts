@@ -17,5 +17,5 @@ export default defineConfig({
   dialect: "postgresql",
   verbose: true,
   dbCredentials: { url: process.env.DATABASE_URL! },
-  tablesFilter: ["infinitunes_*"],
+  tablesFilter: ["infinitunes_*", "sonata_*"],
 });

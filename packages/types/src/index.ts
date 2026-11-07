@@ -10,5 +10,6 @@ export * from "./playlist";
 export * from "./search";
 export * from "./show";
 export * from "./song";
+export * from "./sonata";
 export * from "./radio";
 export * from "./row";

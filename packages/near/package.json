@@ -1,0 +1,21 @@
+{
+  "name": "@infinitunes/near",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "oxlint",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@infinitunes/types": "workspace:*",
+    "@infinitunes/typescript-config": "workspace:*",
+    "@types/bun": "catalog:",
+    "oxlint": "catalog:",
+    "oxfmt": "catalog:",
+    "typescript": "catalog:"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}
