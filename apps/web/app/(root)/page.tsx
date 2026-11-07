@@ -1,5 +1,5 @@
 import { Badge } from "@infinitunes/ui/components/badge";
-import { Play } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 
 import { ImageWithFallback } from "~/components/image-with-fallback";
@@ -115,7 +115,7 @@ export default function HomePage() {
               href={masterHref(featured.tokenId)}
               className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             >
-              <Play aria-hidden="true" className="size-3.5" />
+              <ArrowUpRight aria-hidden="true" className="size-3.5" />
               View the master
             </Link>
           </div>
