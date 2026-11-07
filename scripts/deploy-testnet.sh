@@ -30,7 +30,7 @@ source "$ROOT/ops/testnet.env"
 
 WASM_DIR="$ROOT/contracts/target/wasm32-unknown-unknown/release"
 NETWORK="${NEAR_NETWORK:-testnet}"
-RPC_URL="${NEAR_RPC_URL:-https://rpc.testnet.near.org}"
+RPC_URL="${SONATA_RPC_URL:-${NEAR_RPC_URL:-https://rpc.testnet.fastnear.com}}"
 SIGN_WITH="${SIGN_WITH:-sign-with-keychain}"
 SIGNER="${SONATA_PARENT}"
 
@@ -279,12 +279,49 @@ verify_core() {
 }
 
 fund_demo() {
+  say "Registering demo accounts on USDC"
+  # All five demo people must exist in the token's storage before any transfer
+  # can reach them. `mint` auto-registers its recipient, but the artists are
+  # never minted to, so register every account explicitly (idempotent: the
+  # contract refunds the deposit when the account is already registered).
+  register_account "$LISTENER_ACCOUNT"
+  register_account "$COLLECTOR_ACCOUNT"
+  register_account "$NADIA_ACCOUNT"
+  register_account "$KOFI_ACCOUNT"
+  register_account "$LENA_ACCOUNT"
+
   say "Funding demo USDC balances"
 
   # target balances in micro-USDC (6 decimals)
   fund_account "$LISTENER_ACCOUNT" 20000000
   fund_account "$COLLECTOR_ACCOUNT" 200000000
   fund_account "$PLATFORM_ACCOUNT" 1000000000
+}
+
+# True when the account already has a USDC storage balance (`null` when not
+# registered).
+usdc_registered() {
+  local account="$1" balance
+  balance=$(rpc_view "$USDC_ACCOUNT" storage_balance_of "{\"account_id\":\"$account\"}")
+  [ -n "$balance" ] && [ "$balance" != "null" ]
+}
+
+# Register an account for USDC storage, refunding the excess deposit on a
+# second run. 0.01 NEAR covers the fixed per-account cost.
+register_account() {
+  local account="$1"
+  if usdc_registered "$account"; then
+    say "$account is already registered on $USDC_ACCOUNT (skipping)"
+    return
+  fi
+  say "Registering $account on $USDC_ACCOUNT"
+  near_tty contract call-function as-transaction "$USDC_ACCOUNT" storage_deposit \
+    json-args "{\"account_id\":\"$account\",\"registration_only\":true}" \
+    prepaid-gas 30Tgas \
+    attached-deposit 0.01NEAR \
+    sign-as "$SONATA_PARENT" \
+    network-config "$NETWORK" \
+    "$SIGN_WITH" send
 }
 
 fund_account() {

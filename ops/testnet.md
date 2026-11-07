@@ -179,9 +179,11 @@ pass only when `is_pass_active` is false. A re-run on the deployed state prints 
 
 `scripts/check-demo.sh` talks to the RPC node with read-only view calls (`curl` + `python3`, no
 `jq`/npm) so it never prompts for a keychain password. It exits 0 only when all 12 masters, the
-five listings, the listener pass and the keyless song accounts match. `rpc.testnet.near.org` rate
-limits bursts of view calls; set `SONATA_RPC_URL=https://archival-rpc.testnet.fastnear.com` when
-re-running it in a loop. The deploy/mint scripts accept the same override.
+five listings, the listener pass and the keyless song accounts match. The scripts default to
+`https://rpc.testnet.fastnear.com`; `rpc.testnet.near.org` now answers bursts of view calls with
+`429`. Set `SONATA_RPC_URL` (or `NEAR_RPC_URL`) to override, e.g.
+`https://archival-rpc.testnet.fastnear.com` when re-running in a loop. The deploy/mint scripts
+accept the same override.
 
 ## Exact commands used
 
@@ -278,9 +280,9 @@ yes '' | script -q /dev/null near contract call-function as-read-only "$USDC_ACC
 - `sign-with-keychain` is macOS-only. Keys for every account already exist in the keychain;
   never print or commit them.
 - near-cli-rs defaults to `https://archival-rpc.testnet.fastnear.com/` for its calls, while
-  `ops/testnet.env` points `NEAR_RPC_URL` at `https://rpc.testnet.near.org`. Both see the same
-  testnet state; the scripts use the direct RPC URL for read-only checks so they do not depend
-  on the CLI's spinner output.
+  `ops/testnet.env` points `NEAR_RPC_URL` at `https://rpc.testnet.fastnear.com`. Both see the
+  same testnet state; the scripts use the direct RPC URL for read-only checks so they do not
+  depend on the CLI's spinner output.
 - `contracts/scripts/deploy-core.sh` was fixed for 0.30.1 (`attached-deposit 0` → `0NEAR`).
   It still assumes the caller provides a TTY (wrap it as above) and expects the target accounts
   to exist.
@@ -300,7 +302,9 @@ yes '' | script -q /dev/null near contract call-function as-read-only "$USDC_ACC
 7. ✅ Constructor wiring. `master-nft.platform_id` was already `platform-sonata.testnet`, and
    `platform.new` received the oracle and reserve targets, so no owner setters were needed.
 8. ✅ Mint the 12 demo masters from the artist accounts.
-9. ✅ Register listener/collector on USDC and send them mock USDC.
+9. ✅ Register all five demo accounts (`listener`, `collector`, `nadia`, `kofi`, `lena`) on USDC
+   and send listener/collector mock USDC. `scripts/deploy-testnet.sh --fund-demo` does this
+   idempotently (`storage_deposit` refunds the deposit when an account is already registered).
 10. ✅ Register platform and market on USDC (their constructors call `storage_deposit`).
 11. ✅ Approve the market for five masters, list them and buy the listener pass.
 
@@ -318,7 +322,8 @@ Operational notes:
   in `yes '' | script -q /dev/null`; `script` may exit 1 with `write master: Input/output error`
   after a successful transaction, so the scripts trust the printed `Transaction ID`, not the
   wrapper status.
-- `rpc.testnet.near.org` rate limits bursts of view calls; pass
+- The scripts default to `https://rpc.testnet.fastnear.com`; `rpc.testnet.near.org` now returns
+  `429` for bursts of view calls. Pass
   `SONATA_RPC_URL=https://archival-rpc.testnet.fastnear.com` to any of the three scripts when
   re-running in a loop.
 - Deploying a wasm needs the code storage in the target account. `platform-sonata.testnet`
