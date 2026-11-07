@@ -99,7 +99,7 @@ near contract deploy "$USDC_ACCOUNT" \
   use-file "$WASM_DIR/mock_usdc.wasm" \
   with-init-call new json-args "{\"owner_id\":\"$USDC_OWNER\"}" \
   prepaid-gas 30Tgas \
-  attached-deposit 0 \
+  attached-deposit 0NEAR \
   network-config "$NETWORK" \
   "$SIGN_WITH" send
 
@@ -150,7 +150,7 @@ near contract deploy "$MASTER_ACCOUNT" \
   use-file "$WASM_DIR/master_nft.wasm" \
   with-init-call new json-args "$MASTER_ARGS" \
   prepaid-gas 100Tgas \
-  attached-deposit 0 \
+  attached-deposit 0NEAR \
   network-config "$NETWORK" \
   "$SIGN_WITH" send
 
