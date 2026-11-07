@@ -1,0 +1,699 @@
+import {
+  afterAll,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  mock,
+  spyOn,
+} from "bun:test";
+
+import * as betterAuthCookies from "better-auth/cookies";
+import type { NextRequest } from "next/server";
+
+const fromEnv = mock(() => ({}) as never);
+
+const getSessionCookie = mock(() => undefined as string | undefined);
+
+const seenKeys: string[] = [];
+let limitSuccess = true;
+let limitMode: "ok" | "reject" | "timeout" = "ok";
+let resetOffsetMs = 0;
+const windows: unknown[][] = [];
+const constructed: { prefix?: string; limiter: unknown }[] = [];
+
+mock.module("@upstash/redis", () => ({
+  Redis: { fromEnv },
+}));
+
+mock.module("@upstash/ratelimit", () => ({
+  Ratelimit: class {
+    static slidingWindow = (...args: unknown[]) => {
+      windows.push(args);
+      return { window: args };
+    };
+    constructor(opts: { prefix?: string; limiter: unknown }) {
+      constructed.push(opts);
+    }
+    limit = async (id: string) => {
+      seenKeys.push(id);
+      if (limitMode === "reject") throw new Error("redis down");
+      return {
+        limit: 50,
+        pending: Promise.resolve(),
+        remaining: limitSuccess ? 49 : 0,
+        reset: Date.now() + resetOffsetMs,
+        success: limitMode === "timeout" || limitSuccess,
+        reason: limitMode === "timeout" ? "timeout" : undefined,
+      };
+    };
+  },
+}));
+
+mock.module("better-auth/cookies", () => ({
+  ...betterAuthCookies,
+  getSessionCookie,
+}));
+
+mock.module("next/server", () => ({
+  NextResponse: {
+    next: () => ({ status: 200, headers: new Headers() }),
+    json: (
+      _body: unknown,
+      init?: { status?: number; headers?: Record<string, string> },
+    ) => ({
+      status: init?.status ?? 200,
+      headers: new Headers(init?.headers),
+    }),
+    redirect: (url: URL, status = 307) => ({
+      status,
+      headers: { location: url.href },
+    }),
+  },
+}));
+
+// Pin every env var the proxy reads so the ambient environment (a developer's
+// shell or .env.local) cannot change results; originals are restored in afterAll.
+const pinnedEnv: Record<string, string | undefined> = {
+  SKIP_ENV_VALIDATION: "true",
+  // Rate limiting ON for this file so the limiter path is exercised; the
+  // Upstash clients are fully mocked (no network). `env` snapshots at import,
+  // so per-test toggling cannot work: every suite below runs with the limiter
+  // enabled and a succeeding bucket unless stated.
+  ENABLE_RATE_LIMITING: "true",
+  RATE_LIMITING_REQUESTS_PER_SECOND: "7",
+  // Client IP headers are only trusted behind a configured proxy (see client-ip).
+  TRUSTED_PROXY: "vercel",
+  NODE_ENV: "production",
+  UPSTASH_REDIS_REST_URL: undefined,
+  UPSTASH_REDIS_REST_TOKEN: undefined,
+  RATE_LIMIT_BYPASS_KEY_HASH: undefined,
+  AUTH_URL: undefined,
+  UMAMI_WEBSITE_ID: undefined,
+  VERCEL: undefined,
+};
+const originalEnv = Object.fromEntries(
+  Object.keys(pinnedEnv).map((k) => [k, process.env[k]]),
+);
+const setEnv = (values: Record<string, string | undefined>) => {
+  for (const [k, v] of Object.entries(values)) {
+    if (v === undefined) delete process.env[k];
+    else process.env[k] = v;
+  }
+};
+setEnv(pinnedEnv);
+
+// bun runs every test file in one process; do not leak NODE_ENV=production
+// into unrelated suites (it broke `assertLocalDatabase` under `bun run test`).
+afterAll(() => setEnv(originalEnv));
+
+function createNextRequest(
+  href: string,
+  method: "GET" | "HEAD" | "POST" | "OPTIONS" = "GET",
+  headers: Record<string, string> = {},
+): NextRequest {
+  const nextUrl = new URL(href);
+
+  return {
+    nextUrl,
+    method,
+    headers: new Headers(headers),
+    ip: undefined,
+  } as NextRequest;
+}
+
+describe("proxy Upstash client laziness", () => {
+  let proxy: typeof import("../../proxy").proxy;
+
+  beforeAll(async () => {
+    ({ proxy } = await import("../../proxy"));
+  });
+
+  it("constructs Redis.fromEnv lazily and only once", async () => {
+    expect(fromEnv).not.toHaveBeenCalled();
+    await proxy(createNextRequest("http://localhost:3000/"));
+    await proxy(createNextRequest("http://localhost:3000/"));
+    expect(fromEnv).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("proxy guest route access", () => {
+  let proxy: typeof import("../../proxy").proxy;
+
+  beforeAll(async () => {
+    getSessionCookie.mockImplementation(() => undefined);
+    ({ proxy } = await import("../../proxy"));
+  });
+
+  it("allows guest /settings without redirecting to login", async () => {
+    const res = await proxy(
+      createNextRequest("http://localhost:3000/settings"),
+    );
+
+    expect(res.status).toBe(200);
+  });
+
+  it("redirects guest /me to login", async () => {
+    const res = await proxy(
+      createNextRequest("http://localhost:3000/me/albums"),
+    );
+
+    expect(res.status).toBe(307);
+    expect((res as { headers: { location: string } }).headers.location).toBe(
+      "http://localhost:3000/login",
+    );
+  });
+});
+
+describe("proxy auth routes with a session cookie", () => {
+  let proxy: typeof import("../../proxy").proxy;
+
+  beforeAll(async () => {
+    getSessionCookie.mockImplementation(() => "stale-or-valid-token");
+    ({ proxy } = await import("../../proxy"));
+  });
+
+  // The proxy cannot tell a valid session from a stale cookie; redirecting here
+  // locked users with an expired session out of /login. The (auth) layout
+  // redirects real sessions instead.
+  for (const path of [
+    "/login",
+    "/signup",
+    "/forgot-password",
+    "/reset-password",
+  ]) {
+    it(`does not redirect ${path}`, async () => {
+      const res = await proxy(
+        createNextRequest(`http://localhost:3000${path}`),
+      );
+
+      expect(res.status).toBe(200);
+    });
+  }
+});
+
+describe("proxy detail route normalization", () => {
+  let proxy: typeof import("../../proxy").proxy;
+
+  beforeAll(async () => {
+    getSessionCookie.mockImplementation(() => undefined);
+    ({ proxy } = await import("../../proxy"));
+  });
+
+  it("redirects two-segment /playlist/<x> like other entity routes", async () => {
+    const res = await proxy(
+      createNextRequest("http://localhost:3000/playlist/foo"),
+    );
+
+    expect(res.status).toBe(307);
+    expect((res as { headers: { location: string } }).headers.location).toBe(
+      "http://localhost:3000/playlist",
+    );
+  });
+
+  it("leaves /playlist/<name>/<token> alone", async () => {
+    const res = await proxy(
+      createNextRequest("http://localhost:3000/playlist/foo/bar"),
+    );
+
+    expect(res.status).toBe(200);
+  });
+});
+
+describe("proxy legacy artist tab URLs", () => {
+  let proxy: typeof import("../../proxy").proxy;
+
+  beforeAll(async () => {
+    getSessionCookie.mockImplementation(() => undefined);
+    ({ proxy } = await import("../../proxy"));
+  });
+
+  const location = (res: unknown) =>
+    (res as { headers: { location: string } }).headers.location;
+
+  it("moves a name-suffix URL permanently onto its tab route", async () => {
+    const res = await proxy(
+      createNextRequest(
+        "http://localhost:3000/artist/himesh-reshammiya-bio/tok_",
+      ),
+    );
+
+    expect(res.status).toBe(308);
+    expect(location(res)).toBe(
+      "http://localhost:3000/artist/himesh-reshammiya/tok_/bio",
+    );
+  });
+
+  it("keeps the query string", async () => {
+    const res = await proxy(
+      createNextRequest("http://localhost:3000/artist/x-songs/tok_?cat=latest"),
+    );
+
+    expect(location(res)).toBe(
+      "http://localhost:3000/artist/x/tok_/songs?cat=latest",
+    );
+  });
+
+  it("serves the current URLs without a redirect", async () => {
+    for (const path of ["/artist/x/tok_", "/artist/x/tok_/albums"]) {
+      const res = await proxy(
+        createNextRequest(`http://localhost:3000${path}`),
+      );
+      expect(res.status).toBe(200);
+    }
+  });
+
+  it("does not redirect a non-GET request", async () => {
+    const res = await proxy(
+      createNextRequest("http://localhost:3000/artist/x-songs/tok_", "POST"),
+    );
+
+    expect(res.status).toBe(200);
+  });
+});
+
+describe("proxy /api/trpc origin check", () => {
+  let proxy: typeof import("../../proxy").proxy;
+  const url = "http://localhost:3000/api/trpc/song.details";
+  const call = (
+    headers: Record<string, string>,
+    method: "GET" | "HEAD" | "POST" | "OPTIONS" = "POST",
+  ) => proxy(createNextRequest(url, method, headers));
+
+  beforeAll(async () => {
+    getSessionCookie.mockImplementation(() => undefined);
+    ({ proxy } = await import("../../proxy"));
+  });
+
+  it("rejects a cross-origin Origin header", async () => {
+    const res = await call({
+      origin: "https://evil.example",
+      host: "localhost:3000",
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("rejects a non-GET with only a same-origin Referer (Origin required)", async () => {
+    const res = await call({
+      referer: "http://localhost:3000/search?q=x",
+      host: "localhost:3000",
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("rejects a cross-origin Referer", async () => {
+    const res = await call({
+      referer: "https://evil.example/page",
+      host: "localhost:3000",
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("rejects a malformed Origin instead of throwing", async () => {
+    const res = await call({ origin: "not a url", host: "localhost:3000" });
+    expect(res.status).toBe(403);
+  });
+
+  it("does not let a lookalike host suffix pass", async () => {
+    const res = await call({
+      origin: "http://localhost:3000.evil.example",
+      host: "localhost:3000",
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("rejects a non-GET with neither Origin nor Referer", async () => {
+    const res = await call({ host: "localhost:3000" });
+    expect(res.status).toBe(403);
+  });
+
+  it("accepts a same-origin Origin on POST", async () => {
+    const res = await call({
+      origin: "http://localhost:3000",
+      host: "localhost:3000",
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it("accepts the request's own https host behind a custom domain", async () => {
+    const res = await proxy(
+      createNextRequest(
+        "https://music.example.com/api/trpc/song.details",
+        "POST",
+        { origin: "https://music.example.com", host: "music.example.com" },
+      ),
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it("lets GET and HEAD without Origin or Referer through", async () => {
+    expect((await call({ host: "localhost:3000" }, "GET")).status).toBe(200);
+    expect((await call({ host: "localhost:3000" }, "HEAD")).status).toBe(200);
+  });
+
+  it("still rejects a cross-origin GET and accepts a same-origin Referer GET", async () => {
+    const bad = await call(
+      { origin: "https://evil.example", host: "localhost:3000" },
+      "GET",
+    );
+    const ok = await call(
+      { referer: "http://localhost:3000/x", host: "localhost:3000" },
+      "GET",
+    );
+    expect(bad.status).toBe(403);
+    expect(ok.status).toBe(200);
+  });
+
+  it("passes OPTIONS preflight through without an origin check", async () => {
+    const res = await call({ origin: "https://evil.example" }, "OPTIONS");
+    expect(res.status).toBe(200);
+  });
+});
+
+describe("proxy rate-limit client key (SE-4)", () => {
+  let proxy: typeof import("../../proxy").proxy;
+
+  beforeAll(async () => {
+    getSessionCookie.mockImplementation(() => undefined);
+    ({ proxy } = await import("../../proxy"));
+  });
+
+  it("keys by x-real-ip first, then the first forwarded entry, trimmed", async () => {
+    seenKeys.length = 0;
+    await proxy(
+      createNextRequest("http://localhost:3000/", "GET", {
+        "x-real-ip": " 203.0.113.7 ",
+        "x-forwarded-for": "198.51.100.9, 203.0.113.1",
+      }),
+    );
+    await proxy(
+      createNextRequest("http://localhost:3000/", "GET", {
+        "x-forwarded-for": " 198.51.100.9 , 203.0.113.1",
+      }),
+    );
+    expect(seenKeys).toEqual(["203.0.113.7", "198.51.100.9"]);
+  });
+
+  it("returns 429 without leaking the key when the bucket is empty", async () => {
+    limitSuccess = false;
+    try {
+      const res = (await proxy(
+        createNextRequest("http://localhost:3000/", "GET", {
+          "x-forwarded-for": "198.51.100.9",
+        }),
+      )) as { status: number };
+      expect(res.status).toBe(429);
+    } finally {
+      limitSuccess = true;
+    }
+  });
+});
+
+describe("proxy CSP report-only header", () => {
+  let proxy: typeof import("../../proxy").proxy;
+  const read = (res: unknown, name: string) =>
+    (res as { headers: Headers }).headers.get(name);
+
+  beforeAll(async () => {
+    getSessionCookie.mockImplementation(() => undefined);
+    ({ proxy } = await import("../../proxy"));
+  });
+
+  it("sets a report-only CSP with script hashes and no nonce on page responses", async () => {
+    const res = await proxy(createNextRequest("http://localhost:3000/"));
+    const csp = read(res, "content-security-policy-report-only");
+
+    expect(csp).toMatch(/script-src 'self' 'sha256-[A-Za-z0-9+/]+=*'/);
+    expect(csp).not.toContain("nonce");
+    expect(read(res, "content-security-policy")).toBeNull();
+    expect(read(res, "x-middleware-request-x-nonce")).toBeNull();
+  });
+
+  it("does not add a CSP to /api/trpc responses", async () => {
+    const res = await proxy(
+      createNextRequest("http://localhost:3000/api/trpc/song.details", "GET", {
+        host: "localhost:3000",
+      }),
+    );
+    expect(read(res, "content-security-policy-report-only")).toBeNull();
+  });
+});
+
+describe("proxy /api/auth rate limiting (SE-4)", () => {
+  let proxy: typeof import("../../proxy").proxy;
+
+  beforeAll(async () => {
+    getSessionCookie.mockImplementation(() => undefined);
+    ({ proxy } = await import("../../proxy"));
+  });
+
+  it("limits /api/auth and then passes it through without CSP or redirects", async () => {
+    seenKeys.length = 0;
+    const res = (await proxy(
+      createNextRequest("http://localhost:3000/api/auth/get-session", "GET", {
+        "x-real-ip": "203.0.113.7",
+      }),
+    )) as { status: number; headers: Headers };
+    expect(seenKeys).toEqual(["203.0.113.7"]);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-security-policy-report-only")).toBeNull();
+  });
+
+  it("adds the strict bucket only for credential POSTs", async () => {
+    seenKeys.length = 0;
+    const headers = { "x-real-ip": "203.0.113.7" };
+    await proxy(
+      createNextRequest(
+        "http://localhost:3000/api/auth/sign-in/email",
+        "POST",
+        headers,
+      ),
+    );
+    expect(seenKeys).toHaveLength(2);
+    seenKeys.length = 0;
+    await proxy(
+      createNextRequest(
+        "http://localhost:3000/api/auth/request-password-reset",
+        "POST",
+        headers,
+      ),
+    );
+    await proxy(
+      createNextRequest(
+        "http://localhost:3000/api/auth/sign-in/email",
+        "GET",
+        headers,
+      ),
+    );
+    expect(seenKeys).toHaveLength(2);
+  });
+
+  it("returns 429 with Retry-After on /api/auth when the bucket is empty", async () => {
+    limitSuccess = false;
+    resetOffsetMs = 2500;
+    try {
+      const res = (await proxy(
+        createNextRequest(
+          "http://localhost:3000/api/auth/sign-in/email",
+          "POST",
+        ),
+      )) as { status: number; headers: Headers };
+      expect(res.status).toBe(429);
+      expect(res.headers.get("retry-after")).toBe("3");
+      resetOffsetMs = -5000;
+      const past = (await proxy(
+        createNextRequest(
+          "http://localhost:3000/api/auth/sign-in/email",
+          "POST",
+        ),
+      )) as { headers: Headers };
+      expect(past.headers.get("retry-after")).toBe("1");
+    } finally {
+      limitSuccess = true;
+      resetOffsetMs = 0;
+    }
+  });
+
+  it("builds the global and strict limiters with their own windows and prefixes", async () => {
+    await proxy(
+      createNextRequest("http://localhost:3000/api/auth/sign-in/email", "POST"),
+    );
+    const auth = constructed.find(
+      (c) => c.prefix === "@upstash/ratelimit/auth",
+    );
+    const global = constructed.find((c) => c.prefix === undefined);
+    expect(auth?.limiter).toEqual({ window: [10, "1 m"] });
+    // Validation is skipped, so the pinned value arrives as a raw string.
+    expect(global?.limiter).toEqual({ window: ["7", "1 s"] });
+    expect(constructed).toHaveLength(2);
+    expect(windows).toHaveLength(2);
+  });
+
+  it("fails open and logs when the limiter rejects", async () => {
+    const error = spyOn(console, "error").mockImplementation(() => {});
+    limitMode = "reject";
+    try {
+      const res = (await proxy(
+        createNextRequest(
+          "http://localhost:3000/api/auth/sign-in/email",
+          "POST",
+        ),
+      )) as { status: number };
+      expect(res.status).toBe(200);
+      expect(error).toHaveBeenCalledTimes(2);
+      expect(String(error.mock.calls[0]?.[0])).toContain("[proxy:ratelimit]");
+    } finally {
+      limitMode = "ok";
+      error.mockRestore();
+    }
+  });
+
+  it("logs a timed-out limiter result and lets the request through", async () => {
+    const error = spyOn(console, "error").mockImplementation(() => {});
+    limitMode = "timeout";
+    try {
+      const res = (await proxy(
+        createNextRequest("http://localhost:3000/api/auth/get-session"),
+      )) as { status: number };
+      expect(res.status).toBe(200);
+      expect(error).toHaveBeenCalledTimes(1);
+      expect(String(error.mock.calls[0]?.[0])).toContain("timed out");
+    } finally {
+      limitMode = "ok";
+      error.mockRestore();
+    }
+  });
+
+  it("matches pages, trpc, auth and og but not static assets or other api routes", async () => {
+    const { config } = await import("../../proxy");
+    const { PROXY_MATCHER } = await import("../../lib/rate-limit-scope");
+    expect(config.matcher).toEqual([PROXY_MATCHER]);
+    const re = new RegExp(`^${config.matcher[0]}$`);
+    for (const path of [
+      "/",
+      "/album/x/tok_",
+      "/artist/a.b/tok_",
+      "/api/auth/sign-in/email",
+      "/api/trpc/song.details",
+      "/api/og",
+    ]) {
+      expect(re.test(path)).toBe(true);
+    }
+    for (const path of [
+      "/_next/static/chunks/a.js",
+      "/_next/image",
+      "/favicon.ico",
+      "/icon-512.png",
+      "/fonts/CalSans-SemiBold.woff",
+      "/robots.txt",
+      "/api/other",
+    ]) {
+      expect(re.test(path)).toBe(false);
+    }
+  });
+});
+
+describe("proxy limiter scope", () => {
+  let proxy: typeof import("../../proxy").proxy;
+  const status = async (
+    path: string,
+    headers: Record<string, string> = {},
+    method: "GET" | "POST" = "GET",
+  ) => {
+    seenKeys.length = 0;
+    limitSuccess = false;
+    try {
+      const res = (await proxy(
+        createNextRequest(`http://localhost:3000${path}`, method, {
+          host: "localhost:3000",
+          origin: "http://localhost:3000",
+          ...headers,
+        }),
+      )) as { status: number };
+      return { status: res.status, charged: seenKeys.length };
+    } finally {
+      limitSuccess = true;
+    }
+  };
+
+  beforeAll(async () => {
+    getSessionCookie.mockImplementation(() => undefined);
+    ({ proxy } = await import("../../proxy"));
+  });
+
+  it("limits document requests and requests without fetch metadata", async () => {
+    expect((await status("/", { "sec-fetch-dest": "document" })).status).toBe(
+      429,
+    );
+    expect((await status("/")).status).toBe(429);
+  });
+
+  it("never limits RSC navigations, prefetches or subresources", async () => {
+    for (const headers of [
+      { rsc: "1", "sec-fetch-dest": "empty" },
+      { rsc: "1", "next-router-prefetch": "1" },
+      { "sec-fetch-dest": "image" },
+      { "sec-fetch-dest": "script" },
+    ]) {
+      expect(await status("/album/x/tok_", headers)).toEqual({
+        status: 200,
+        charged: 0,
+      });
+    }
+  });
+
+  it("limits server actions and api requests regardless of fetch metadata", async () => {
+    expect(
+      (
+        await status(
+          "/me",
+          { "next-action": "abc", "sec-fetch-dest": "empty" },
+          "POST",
+        )
+      ).charged,
+    ).toBe(1);
+    expect(
+      (await status("/api/trpc/song.details", { "sec-fetch-dest": "empty" }))
+        .status,
+    ).toBe(429);
+  });
+});
+
+describe("proxy /api/og rate limiting", () => {
+  let proxy: typeof import("../../proxy").proxy;
+
+  beforeAll(async () => {
+    getSessionCookie.mockImplementation(() => undefined);
+    ({ proxy } = await import("../../proxy"));
+  });
+
+  it("charges the global and og buckets, with the trusted client key", async () => {
+    seenKeys.length = 0;
+    const res = (await proxy(
+      createNextRequest("http://localhost:3000/api/og?title=x", "GET", {
+        "x-real-ip": "203.0.113.7",
+        "sec-fetch-dest": "image",
+      }),
+    )) as { status: number; headers: Headers };
+    expect(seenKeys).toEqual(["203.0.113.7", "203.0.113.7"]);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-security-policy-report-only")).toBeNull();
+    const og = constructed.find((c) => c.prefix === "@upstash/ratelimit/og");
+    expect(og?.limiter).toEqual({ window: [20, "1 m"] });
+  });
+
+  it("answers 429 with Retry-After when the og bucket is empty", async () => {
+    limitSuccess = false;
+    resetOffsetMs = 4000;
+    try {
+      const res = (await proxy(
+        createNextRequest("http://localhost:3000/api/og"),
+      )) as { status: number; headers: Headers };
+      expect(res.status).toBe(429);
+      expect(res.headers.get("retry-after")).toBe("4");
+    } finally {
+      limitSuccess = true;
+      resetOffsetMs = 0;
+    }
+  });
+});

@@ -1,0 +1,8 @@
+{
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "editor.defaultFormatter": "oxc-project.oxc-vscode",
+  "editor.formatOnSave": true,
+  "oxc.format.enable": true,
+  "oxc.lint.enable": true,
+  "oxc.lint.run": "onType"
+}

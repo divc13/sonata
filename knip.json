@@ -1,0 +1,15 @@
+{
+  "ignore": ["design-mockups/**", ".agents/**"],
+  "workspaces": {
+    "apps/web": {
+      "ignore": ["tests/dom/preload.ts", "tests/fixtures/cached-api-fetch.mjs"]
+    },
+    "packages/db": {
+      "ignore": ["src/drizzle.config.ts"]
+    },
+    "packages/ui": {
+      "ignoreDependencies": ["@shadcn/lint"]
+    },
+    "packages/*": {}
+  }
+}

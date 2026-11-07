@@ -1,0 +1,39 @@
+"use client";
+
+import { Button } from "@infinitunes/ui/components/button";
+import { TriangleAlert } from "lucide-react";
+import React from "react";
+
+import { LibraryState } from "~/components/library/library-section";
+import { logRouteError } from "~/components/route-error";
+import { controlStyles } from "~/lib/control-styles";
+
+type ErrorProps = {
+  error: Error & { digest?: string };
+  retry: () => void;
+};
+
+export default function LibraryError({ error, retry }: ErrorProps) {
+  React.useEffect(() => {
+    logRouteError(error);
+  }, [error]);
+
+  return (
+    <div role="alert">
+      <LibraryState
+        icon={TriangleAlert}
+        tone="error"
+        title="Couldn’t load this section"
+        description="Something went wrong while loading your library. Your saved items are safe, so try again."
+      >
+        <Button
+          variant="secondary"
+          onClick={() => retry()}
+          className={controlStyles.text}
+        >
+          Try Again
+        </Button>
+      </LibraryState>
+    </div>
+  );
+}

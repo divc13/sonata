@@ -1,0 +1,57 @@
+"use client";
+
+import type { Lyrics as LyricsData } from "@infinitunes/types";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@infinitunes/ui/components/accordion";
+import React from "react";
+
+import { sanitizeRichText } from "~/lib/sanitize-rich-text";
+
+type LyricsProps = { lyrics: LyricsData };
+
+export function Lyrics({ lyrics }: LyricsProps) {
+  const [isCollapsed, setIsCollapsed] = React.useState(true);
+
+  return (
+    <Accordion
+      onValueChange={(openItems) =>
+        setIsCollapsed(!openItems.includes("lyrics"))
+      }
+    >
+      <AccordionItem value="lyrics">
+        <AccordionTrigger className="no-underline!">
+          <div className="flex flex-col items-start gap-2">
+            <h2 className="pl-2 font-heading text-xl text-foreground sm:text-2xl md:text-3xl lg:pl-0">
+              Lyrics
+            </h2>
+
+            {isCollapsed && (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  {lyrics.snippet}
+                </p>
+
+                <p className="text-sm italic">Read More...</p>
+              </>
+            )}
+          </div>
+        </AccordionTrigger>
+
+        <AccordionContent>
+          <p
+            className="text-sm text-muted-foreground"
+            dangerouslySetInnerHTML={{
+              __html: sanitizeRichText(
+                `${lyrics.lyrics}<br/><br/>${lyrics.lyrics_copyright}`,
+              ),
+            }}
+          />
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
+  );
+}

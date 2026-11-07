@@ -1,0 +1,54 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalPassThroughEnv": [
+    "SKIP_ENV_VALIDATION",
+    "NODE_ENV",
+    "VERCEL",
+    "VERCEL_URL",
+    "VERCEL_PROJECT_PRODUCTION_URL",
+    "NEXT_TELEMETRY_DISABLED",
+    "PORT",
+    "LOCAL_DEV_CONFIG",
+    "NEXT_RUNTIME"
+  ],
+  "tasks": {
+    "dev": {
+      "persistent": true,
+      "cache": false
+    },
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**"]
+    },
+    "start": {
+      "dependsOn": ["^build"],
+      "persistent": true,
+      "cache": false
+    },
+    "lint": {},
+    "type-check": {}
+  },
+  "globalEnv": [
+    "AUTH_SECRET",
+    "AUTH_URL",
+    "GOOGLE_CLIENT_ID",
+    "GOOGLE_CLIENT_SECRET",
+    "GITHUB_CLIENT_ID",
+    "GITHUB_CLIENT_SECRET",
+    "JIOSAAVN_DES_KEY",
+    "DATABASE_URL",
+    "UPSTASH_REDIS_REST_URL",
+    "UPSTASH_REDIS_REST_TOKEN",
+    "ENABLE_RATE_LIMITING",
+    "TRUSTED_PROXY",
+    "RATE_LIMITING_REQUESTS_PER_SECOND",
+    "UMAMI_WEBSITE_ID",
+    "RESEND_API_KEY",
+    "EMAIL_FROM",
+    "BETTER_AUTH_URL",
+    "BETTER_AUTH_SECRET",
+    "BETTER_AUTH_RP_ID",
+    "NEXT_PUBLIC_*"
+  ],
+  "globalDependencies": [".env", ".env.local"]
+}

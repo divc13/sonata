@@ -1,0 +1,97 @@
+import type { Episode, EpisodeDetail, Show } from "@infinitunes/types";
+import { TRPCError } from "@trpc/server";
+import { z } from "zod";
+
+import { endpoints } from "../lib/endpoints";
+import { showEpisodesInput, showInput } from "../lib/inputs";
+import { publicProcedure, router } from "../trpc";
+import {
+  hasIdentity,
+  isRecord,
+  mapDownloadUrls,
+  withDownloadUrl,
+} from "./utils";
+
+function requireShowToken(
+  input: { token?: string },
+  noun: "show" | "episode",
+): string {
+  const { token } = input;
+  if (!token) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Please provide ${noun} token`,
+    });
+  }
+  return token;
+}
+
+export const showRouter = router({
+  details: publicProcedure
+    .input(showInput)
+    .output(z.custom<Show>())
+    .query(async ({ input, ctx: { catalogApi: api } }) => {
+      const result = await api(endpoints.show.show_details, {
+        query: {
+          token: requireShowToken(input, "show"),
+          type: "show",
+          season_number: input.season,
+          sort_order: input.sort,
+        },
+      });
+      // Upstream answers `{ status: "failure" }` for an unknown token.
+      if (!isRecord(result) || !hasIdentity(result.show_details, "id")) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No show found, please check the token",
+        });
+      }
+      mapDownloadUrls(result, "episodes");
+      return result as Show;
+    }),
+
+  episodes: publicProcedure
+    .input(showEpisodesInput)
+    .output(z.custom<Episode[]>())
+    .query(async ({ input, ctx: { catalogApi: api } }) => {
+      const result = await api(endpoints.show.episodes, {
+        query: {
+          show_id: input.id,
+          season_number: input.season,
+          p: input.page,
+          sort_order: input.sort,
+        },
+      });
+      // Upstream answers with a list, or an object when the season has no
+      // episodes; every consumer treats that as an empty page.
+      if (!Array.isArray(result)) return [];
+      return result.map((item) => withDownloadUrl(item)) as Episode[];
+    }),
+
+  episodeDetails: publicProcedure
+    .input(showInput)
+    .output(z.custom<EpisodeDetail>())
+    .query(async ({ input, ctx: { catalogApi: api } }) => {
+      const result = await api(endpoints.show.episode_details, {
+        query: {
+          token: requireShowToken(input, "episode"),
+          type: "episode",
+          season_number: input.season,
+          sort_order: input.sort,
+        },
+      });
+      // Upstream answers with an empty placeholder episode for an unknown token.
+      if (
+        !isRecord(result) ||
+        !Array.isArray(result.episodes) ||
+        !hasIdentity(result.episodes[0], "id")
+      ) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No episode found, please check the token",
+        });
+      }
+      mapDownloadUrls(result, "episodes");
+      return result as EpisodeDetail;
+    }),
+});

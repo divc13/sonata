@@ -1,0 +1,21 @@
+{
+  "name": "@infinitunes/types",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "oxlint --deny-warnings",
+    "lint": "oxlint",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@infinitunes/typescript-config": "workspace:*",
+    "@types/bun": "catalog:",
+    "oxlint": "catalog:",
+    "oxfmt": "catalog:",
+    "typescript": "catalog:"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "name": "infinitunes",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run with-env turbo run dev",
+    "build": "bun run with-env turbo run build",
+    "start": "bun run with-env turbo run start",
+    "lint": "turbo run lint",
+    "knip": "knip",
+    "clean": "bash scripts/clean.sh",
+    "deps:update": "bun update -i",
+    "skeletons:capture": "bun run --cwd apps/web skeletons:capture && oxfmt --write apps/web/bones",
+    "budget": "bun scripts/check-budget.ts",
+    "type-check": "turbo run type-check",
+    "test": "bun test --pass-with-no-tests && bun run test:isolated",
+    "test:isolated": "bun scripts/test-isolated.ts",
+    "test:mocked": "bun scripts/test-isolated.ts mocked",
+    "test:dom": "bun scripts/test-isolated.ts dom",
+    "test:routers": "bun scripts/test-isolated.ts routers",
+    "fmt": "oxfmt --write \"**/*.{ts,tsx,mdx,json}\"",
+    "fmt:check": "oxfmt --check \"**/*.{ts,tsx,mdx,json}\"",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:generate": "bun run --filter @infinitunes/db db:generate",
+    "db:migrate": "bun run --filter @infinitunes/db db:migrate",
+    "db:seed": "bun run --filter @infinitunes/db db:seed",
+    "db:drop": "bun run --filter @infinitunes/db db:drop",
+    "db:push": "bun run --filter @infinitunes/db db:push",
+    "db:pull": "bun run --filter @infinitunes/db db:pull",
+    "db:studio": "bun run --filter @infinitunes/db db:studio",
+    "db:check": "bun run --filter @infinitunes/db db:check",
+    "ui": "bunx shadcn@latest --cwd packages/ui",
+    "prepare": "husky",
+    "with-env": "bun --env-file=.env --env-file=.env.local"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.2.4",
+    "@commitlint/config-conventional": "^21.2.4",
+    "@happy-dom/global-registrator": "^21.0.4",
+    "@types/node": "catalog:",
+    "husky": "^9.1.7",
+    "knip": "^6.43.0",
+    "lint-staged": "^17.6.0",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "turbo": "^2.11.10"
+  },
+  "workspaces": {
+    "packages": [
+      "apps/*",
+      "packages/*"
+    ],
+    "catalog": {
+      "@trpc/server": "^11.19.0",
+      "@types/bun": "^1.4.2",
+      "@types/node": "^26.6.5",
+      "@types/react": "^19.3.0",
+      "@types/react-dom": "^19.3.0",
+      "bcryptjs": "^3.0.3",
+      "better-auth": "^1.7.6",
+      "drizzle-orm": "^0.45.3",
+      "lucide-react": "^1.48.0",
+      "next-themes": "^0.4.6",
+      "oxfmt": "^0.74.0",
+      "oxlint": "^1.89.0",
+      "server-only": "^0.0.1",
+      "sonner": "^2.0.8",
+      "superjson": "^2.2.6",
+      "tailwindcss": "^4.3.3",
+      "typescript": "^7.0.2",
+      "zod": "^4.6.5"
+    }
+  },
+  "lint-staged": {
+    "*.{ts,tsx,md,mdx}": [
+      "oxfmt --write"
+    ],
+    "*.{ts,tsx,mdx}": [
+      "oxlint --no-error-on-unmatched-pattern"
+    ]
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  },
+  "packageManager": "bun@1.4.4"
+}

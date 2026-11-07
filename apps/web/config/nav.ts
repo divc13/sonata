@@ -1,0 +1,74 @@
+import {
+  Disc3,
+  History,
+  Library,
+  ListMusic,
+  Mic2,
+  Podcast,
+  Radio,
+  Star,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import type { Route } from "next";
+
+export type NavItem = {
+  title: string;
+  href: Route;
+  icon: LucideIcon;
+};
+
+export const browseNav: NavItem[] = [
+  {
+    title: "Top Albums",
+    href: "/album",
+    icon: Library,
+  },
+  {
+    title: "Top Charts",
+    href: "/chart",
+    icon: Disc3,
+  },
+  {
+    title: "Top Playlists",
+    href: "/playlist",
+    icon: ListMusic,
+  },
+  {
+    title: "Podcasts",
+    href: "/show",
+    icon: Podcast,
+  },
+  {
+    title: "Top Artists",
+    href: "/artist",
+    icon: Mic2,
+  },
+  {
+    title: "Radio",
+    href: "/radio",
+    icon: Radio,
+  },
+];
+
+export const libraryNav: NavItem[] = [
+  {
+    title: "Recently Played",
+    href: "/me/recently-played",
+    icon: History,
+  },
+  {
+    title: "Your Favorite",
+    href: "/me/liked-songs",
+    icon: Star,
+  },
+];
+
+export const sidebarNav: NavItem[] = [...browseNav, ...libraryNav];
+
+/** The mockup tab bar rule: exact match, or a path below the item. `/` only matches itself. */
+export function isNavActive(pathname: string | null, href: string) {
+  if (pathname === null) return false;
+  if (href === "/") return pathname === "/";
+
+  return pathname === href || pathname.startsWith(`${href}/`);
+}

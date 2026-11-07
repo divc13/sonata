@@ -1,0 +1,20 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "base-nova",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "src/styles/globals.css",
+    "baseColor": "neutral",
+    "cssVariables": true
+  },
+  "iconLibrary": "lucide",
+  "aliases": {
+    "components": "@infinitunes/ui/components",
+    "ui": "@infinitunes/ui/components",
+    "lib": "@infinitunes/ui/lib",
+    "utils": "@infinitunes/ui/lib/utils",
+    "hooks": "@infinitunes/ui/hooks"
+  }
+}

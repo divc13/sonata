@@ -1,0 +1,597 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "./glass.css";
+@import "./motion.css";
+
+@source '../../../packages/ui/src';
+
+/* A skeleton is a loading placeholder: once the image beside or over it has
+   loaded (ImageWithFallback sets data-loaded) its pulse stops. Left running it
+   is an endless animation behind opaque artwork that makes the compositor redraw
+   every glass backdrop on the page, every frame. Unlayered, so it beats the
+   `animate-pulse` utility. */
+div:has(img[data-loaded]) > [data-slot="skeleton"] {
+  animation: none;
+}
+
+@custom-variant dark (&:is(.dark *));
+@custom-variant reduced-transparency (@media (prefers-reduced-transparency: reduce));
+
+/* Documented in docs/design-system/tokens.md. */
+
+/* Constants, always emitted so plain CSS can read them. */
+@theme static {
+  --ease-spring: cubic-bezier(0.2, 0.9, 0.25, 1);
+  /* Panels (sidebar, queue) and the page morph. Eases in a little before it settles, so the middle of the
+     move is visible; --ease-drawer and --ease-spring are 80% done in the first quarter and read as a jump. */
+  --ease-panel: cubic-bezier(0.35, 0.05, 0.2, 1);
+  --duration-fast: 150ms;
+  --duration-base: 250ms;
+  --duration-slow: 400ms;
+  --duration-panel: 340ms;
+}
+
+@theme inline {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --font-heading:
+    var(--font-heading), var(--font-sans-devanagari), ui-sans-serif, system-ui,
+    sans-serif;
+  --font-sans:
+    var(--font-sans), var(--font-sans-devanagari), ui-sans-serif, system-ui,
+    sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji";
+  --font-mono:
+    var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --color-fill: var(--fill);
+  --color-fill-2: var(--fill-2);
+  --color-fill-3: var(--fill-3);
+  --color-scrim: var(--scrim);
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--radius);
+  --radius-lg: var(--r-lg);
+  --radius-xl: calc(var(--radius) * 2);
+  --radius-2xl: calc(var(--radius) * 2.5);
+  --radius-3xl: calc(var(--radius) * 3);
+  --radius-4xl: calc(var(--radius) * 4);
+  --radius-ctl: var(--r-ctl);
+  --spacing-ctl: var(--ctl);
+  --spacing-ctl-lg: var(--ctl-lg);
+  --spacing-row: var(--row);
+  --spacing-art: var(--art);
+  --spacing-page: var(--page-pad);
+}
+
+/* The docked queue's reserved column. It is 0 unless the queue is docked open (1440px and up); registered so
+   it animates with the pane instead of stepping. */
+@property --queue-reserve {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+/* The page content box: capped at --page-max, padded by --page-pad. It is the anchor the desktop player bar
+   spans (see "Player span" in glass.css), so both share one geometry.
+
+   The column it sits in starts after the sidebar gap and ends at the viewport edge, so the panels never move
+   it by themselves (percentages below resolve against that column, `Cf`). The box is as wide as fits left of
+   the docked queue, then centred in the VIEWPORT as if no panel were open, and only pushed as far as needed
+   to clear the sidebar (left) and the queue (right): `margin-left = clamp(0, Cf - (100vw + w) / 2, Cf - R - w)`.
+   When it does not fit (narrow screens) the clamp collapses to 0 and the box fills the free column, which is
+   the classic push layout. `--page-ml` and `--page-w` are shared with the toolbar (`page-gutter`). */
+@utility page-container {
+  --page-w: min(var(--page-max), calc(100% - var(--queue-reserve)));
+  --page-ml: clamp(
+    0px,
+    calc(100% - (100vw + var(--page-w)) / 2),
+    calc(100% - var(--queue-reserve) - var(--page-w))
+  );
+  width: var(--page-w);
+  max-width: var(--page-max);
+  margin-left: var(--page-ml);
+  margin-right: 0;
+  padding-inline: var(--page-pad);
+  anchor-name: --page-container;
+}
+
+/* The toolbar's inline padding, aligned to the same page box (md and up). */
+@utility page-gutter {
+  --page-w: min(var(--page-max), calc(100% - var(--queue-reserve)));
+  --page-ml: clamp(
+    0px,
+    calc(100% - (100vw + var(--page-w)) / 2),
+    calc(100% - var(--queue-reserve) - var(--page-w))
+  );
+  padding-left: max(var(--page-pad), var(--page-ml));
+  padding-right: max(
+    calc(var(--queue-reserve) + var(--page-pad)),
+    calc(100% - var(--page-ml) - var(--page-w))
+  );
+}
+
+@utility duration-fast {
+  transition-duration: var(--duration-fast);
+}
+
+@utility duration-base {
+  transition-duration: var(--duration-base);
+}
+
+@utility duration-slow {
+  transition-duration: var(--duration-slow);
+}
+
+@utility duration-panel {
+  transition-duration: var(--duration-panel);
+}
+
+/*
+ * Light scheme. Surfaces and text are shared by every accent. The accent
+ * variables (--light-*, --dark-*) default to a neutral, foreground-based set
+ * here and are overridden inline on <html> by lib/theme/html.ts when the glass
+ * tint is on (the primary colour is then derived from the tint colour).
+ */
+:root {
+  color-scheme: light;
+
+  --light-primary: oklch(0.205 0 89.9);
+  --light-primary-foreground: oklch(1 0 0);
+  --light-accent: oklch(0.94 0 89.9);
+  --dark-primary: oklch(0.967 0.001 286.4);
+  --dark-primary-foreground: oklch(0.18 0 0);
+  --dark-accent: oklch(0.3 0 286.4);
+
+  --background: #f5f5f7;
+  --foreground: #1d1d1f;
+  --card: #ffffff;
+  --card-foreground: var(--foreground);
+  --popover: #ffffff;
+  --popover-foreground: var(--foreground);
+  --primary: var(--light-primary);
+  --primary-foreground: var(--light-primary-foreground);
+  --secondary: #eaeaec;
+  --secondary-foreground: var(--foreground);
+  --muted: #eaeaec;
+  --muted-foreground: #66666b;
+  --accent: var(--light-accent);
+  --accent-foreground: var(--foreground);
+  --destructive: oklch(0.5 0.19 25);
+  --destructive-foreground: oklch(0.99 0.002 285);
+  --border: var(--line);
+  --input: #86868b;
+  --ring: var(--primary);
+  --sidebar: var(--background);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--accent-foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+
+  --line: rgb(0 0 0 / 0.08);
+  --fill: rgb(0 0 0 / 0.045);
+  --fill-2: rgb(0 0 0 / 0.08);
+  --fill-3: rgb(0 0 0 / 0.12);
+  --scrim: rgb(0 0 0 / 0.28);
+  /* One base radius; every corner derives from it. */
+  --radius: 0.75rem;
+  --r-sm: calc(var(--radius) * 0.66);
+  --r-lg: calc(var(--radius) * 1.5);
+  --r-ctl: calc(var(--radius) * 1.5);
+
+  --ctl: 2rem;
+  --ctl-lg: 2.25rem;
+  --row: 3.25rem;
+  --art: 2.5rem;
+  --page-pad: clamp(1rem, 2.4vw, 2.5rem);
+  --page-max: 100rem;
+  --page-gap: 1.5rem;
+  --side-w: 15rem;
+  --queue-w: 20rem;
+
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-cal-sans);
+  --font-mono: var(--font-jetbrains-mono);
+}
+
+.dark {
+  color-scheme: dark;
+
+  --background: #0b0b0c;
+  --foreground: #f5f5f7;
+  --card: #1c1c1e;
+  --popover: #1c1c1e;
+  --primary: var(--dark-primary);
+  --primary-foreground: var(--dark-primary-foreground);
+  --secondary: #2c2c2e;
+  --muted: #2c2c2e;
+  --muted-foreground: #98989f;
+  --accent: var(--dark-accent);
+  --destructive: oklch(0.73 0.16 25);
+  --destructive-foreground: oklch(0.2 0.015 285);
+  --input: #6c6c70;
+
+  --line: rgb(255 255 255 / 0.09);
+  --fill: rgb(255 255 255 / 0.07);
+  --fill-2: rgb(255 255 255 / 0.12);
+  --fill-3: rgb(255 255 255 / 0.18);
+  --scrim: rgb(0 0 0 / 0.5);
+}
+
+/* Density: the row and artwork sizes the lists and tables use. */
+[data-density="compact"] {
+  --row: 2.5rem;
+  --art: 2rem;
+}
+
+/* Touch screens: bigger controls and rows. */
+@media (pointer: coarse) {
+  :root {
+    --ctl: 2.5rem;
+    --ctl-lg: 2.75rem;
+    --row: 3.5rem;
+    --art: 2.75rem;
+  }
+
+  [data-density="compact"] {
+    --row: 3rem;
+    --art: 2.25rem;
+  }
+}
+
+/* Interface font, mapped from <html data-font>. */
+[data-font="rounded"] {
+  --font-sans: var(--font-nunito);
+}
+
+[data-font="grotesk"] {
+  --font-sans: var(--font-hanken-grotesk);
+}
+
+[data-font="serif"] {
+  --font-sans: var(--font-source-serif);
+}
+
+[data-font="mono"] {
+  --font-sans: var(--font-jetbrains-mono);
+}
+
+/* Heading font, mapped from <html data-heading-font>. */
+[data-heading-font="system"] {
+  --font-heading: var(--font-inter);
+}
+
+[data-heading-font="rounded"] {
+  --font-heading: var(--font-nunito);
+}
+
+[data-heading-font="grotesk"] {
+  --font-heading: var(--font-hanken-grotesk);
+}
+
+[data-heading-font="serif"] {
+  --font-heading: var(--font-source-serif);
+}
+
+[data-heading-font="mono"] {
+  --font-heading: var(--font-jetbrains-mono);
+}
+
+/* Accessibility signals flip tokens, so every consumer inherits them. */
+@media (prefers-contrast: more) {
+  :root {
+    --line: rgb(0 0 0 / 0.3);
+    --muted-foreground: #4a4a4f;
+  }
+
+  .dark {
+    --line: rgb(255 255 255 / 0.35);
+    --muted-foreground: #c0c0c6;
+  }
+}
+
+/*
+ * Reduced motion (the OS setting or the in-app switch) removes movement, not feedback. Anything that moves or
+ * scales (transforms, widths, keyframes) is instant; opacity, colour and visibility still ease over a short
+ * fade, so a page change, a panel or a menu is still announced gently (WCAG 2.3.3). Never set a duration to
+ * zero for a whole class of elements: that is what made every panel and view transition vanish.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 120ms;
+    --duration-base: 160ms;
+    --duration-slow: 200ms;
+    --duration-panel: 200ms;
+  }
+
+  *,
+  ::after,
+  ::before {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-property:
+      opacity, color, background-color, border-color, outline-color,
+      text-decoration-color, fill, stroke, box-shadow, visibility !important;
+    transition-duration: var(--duration-base) !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Menus, dialogs and popovers fade in place (tw-animate's zoom and slide offsets are zeroed). */
+  :is(
+    [data-slot="popover-content"],
+    [data-slot="dropdown-menu-content"],
+    [data-slot="dropdown-menu-sub-content"],
+    [data-slot="dialog-content"],
+    [data-slot="alert-dialog-content"],
+    [data-slot="dialog-overlay"],
+    [data-slot="alert-dialog-overlay"],
+    [data-slot="tooltip-content"]
+  ):is([data-open], [data-closed]) {
+    --tw-enter-scale: 1;
+    --tw-enter-translate-x: 0;
+    --tw-enter-translate-y: 0;
+    --tw-exit-scale: 1;
+    --tw-exit-translate-x: 0;
+    --tw-exit-translate-y: 0;
+    animation-duration: var(--duration-base) !important;
+  }
+
+  /* Spinners convey "busy" state, so they keep turning. */
+  .animate-spin {
+    animation-duration: 1s !important;
+    animation-iteration-count: infinite !important;
+  }
+}
+
+/* The in-app Reduce motion switch behaves like the OS setting. */
+[data-motion="reduced"] {
+  --duration-fast: 120ms;
+  --duration-base: 160ms;
+  --duration-slow: 200ms;
+  --duration-panel: 200ms;
+}
+
+[data-motion="reduced"] *,
+[data-motion="reduced"] ::after,
+[data-motion="reduced"] ::before {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-property:
+    opacity, color, background-color, border-color, outline-color,
+    text-decoration-color, fill, stroke, box-shadow, visibility !important;
+  transition-duration: var(--duration-base) !important;
+  scroll-behavior: auto !important;
+}
+
+[data-motion="reduced"]
+  :is(
+    [data-slot="popover-content"],
+    [data-slot="dropdown-menu-content"],
+    [data-slot="dropdown-menu-sub-content"],
+    [data-slot="dialog-content"],
+    [data-slot="alert-dialog-content"],
+    [data-slot="dialog-overlay"],
+    [data-slot="alert-dialog-overlay"],
+    [data-slot="tooltip-content"]
+  ):is([data-open], [data-closed]) {
+  --tw-enter-scale: 1;
+  --tw-enter-translate-x: 0;
+  --tw-enter-translate-y: 0;
+  --tw-exit-scale: 1;
+  --tw-exit-translate-x: 0;
+  --tw-exit-translate-y: 0;
+  animation-duration: var(--duration-base) !important;
+}
+
+[data-motion="reduced"] .animate-spin {
+  animation-duration: 1s !important;
+  animation-iteration-count: infinite !important;
+}
+
+/* A colour-mode switch (lib/theme/mode.ts) repaints in one frame: nothing eases through the old colours. */
+html[data-theme-switching],
+html[data-theme-switching] *,
+html[data-theme-switching] *::before,
+html[data-theme-switching] *::after {
+  transition: none !important;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  :focus-visible {
+    outline: var(--focus-ring-width) solid var(--ring);
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  :root {
+    /* player bar (5rem) + gap; below lg the 3.5rem mobile nav sits underneath it */
+    --toast-offset-bottom: 6rem;
+  }
+
+  @media (max-width: 1023.98px) {
+    :root {
+      --toast-offset-bottom: calc(9.5rem + env(safe-area-inset-bottom));
+    }
+  }
+
+  html {
+    @apply overflow-x-clip font-sans;
+    /*
+     * The page scrolls on the viewport. Reserve the scrollbar's lane so the
+     * layout is the same width whether or not the page is tall enough to scroll:
+     * a skeleton shorter than the viewport, or a scroll lock from a menu, no
+     * longer moves the page sideways.
+     */
+    scrollbar-gutter: stable;
+    /* Scales rem, so controls and spacing grow with the text size. */
+    font-size: calc(100% * var(--text-scale, 1));
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html:not([data-motion="reduced"]) {
+      scroll-behavior: smooth;
+    }
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased max-w-full overflow-x-clip;
+    font-size: 0.875rem;
+    line-height: 1.45;
+    letter-spacing: -0.003em;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-heading;
+  }
+
+  img,
+  video,
+  canvas {
+    @apply max-w-full;
+  }
+
+  img {
+    -webkit-user-drag: none;
+    user-drag: none;
+  }
+
+  ::selection {
+    @apply bg-primary text-primary-foreground;
+  }
+
+  ::-webkit-scrollbar {
+    @apply h-2 w-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-muted;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground rounded-full;
+  }
+}
+
+/* A docked queue reserves its column; the page box moves only if it no longer fits beside it. */
+html {
+  transition: --queue-reserve var(--duration-panel) var(--ease-panel);
+}
+@media (min-width: 1440px) {
+  html[data-queue="open"] {
+    --queue-reserve: var(--queue-w);
+  }
+}
+
+@media (min-width: 120rem) {
+  :root {
+    --side-w: 16.5rem;
+    --queue-w: 22rem;
+  }
+}
+
+/*
+ * A visitor who collapsed the sidebar: the layout is prerendered with it open,
+ * so `lib/theme-script.ts` flags `<html data-sidebar="collapsed">` from the
+ * `sidebar_state` cookie before first paint. Until `AppSidebarProvider` applies
+ * the saved state at hydration, hold the collapsed gutter open and keep the
+ * expanded panel out of sight, so nothing slides or jumps when it settles.
+ */
+html[data-sidebar="collapsed"]:not([data-sidebar-ready])
+  [data-slot="sidebar"][data-state="expanded"]
+  [data-slot="sidebar-gap"] {
+  width: var(--sidebar-width-icon);
+}
+
+html[data-sidebar="collapsed"]:not([data-sidebar-ready])
+  [data-slot="sidebar"][data-state="expanded"]
+  [data-slot="sidebar-container"] {
+  visibility: hidden;
+}
+
+html[data-sidebar="collapsed"]:not([data-sidebar-ready])
+  [data-slot="sidebar-wrapper"] {
+  --g-edge-l: var(--sidebar-width-icon);
+}
+
+/*
+ * Sidebar groups the icon rail does not show (Library label, playlists, the
+ * create prompt): they fade as the panel narrows and leave the layout when it
+ * has settled, and fade back in when it widens. `display` is discrete, so the
+ * transition holds the old value for its whole duration.
+ */
+.sidebar-rail-hide {
+  opacity: 1;
+  transition:
+    opacity var(--duration-panel) var(--ease-panel),
+    display var(--duration-panel) allow-discrete;
+}
+/* Only after hydration: groups in the prerendered markup must not fade in on first paint. */
+html[data-sidebar-ready] .sidebar-rail-hide {
+  @starting-style {
+    opacity: 0;
+  }
+}
+.group[data-collapsible="icon"] .sidebar-rail-hide {
+  opacity: 0;
+}
+
+/*
+ * The mobile and tablet sidebar is a left sheet. The packages/ui sheet only
+ * nudges 2.5rem and fades; this slides the whole panel in and out (opening
+ * eases over the panel duration, closing leaves faster). Reduced motion swaps the
+ * slide for a fade (`styles/motion.css`).
+ */
+[data-slot="sidebar"][data-mobile="true"] {
+  transition-property: translate, opacity;
+  transition-duration: var(--duration-panel);
+  transition-timing-function: var(--ease-panel);
+}
+[data-slot="sidebar"][data-mobile="true"]:is(
+    [data-starting-style],
+    [data-ending-style]
+  ) {
+  translate: -100% 0;
+  opacity: 1;
+}
+[data-slot="sidebar"][data-mobile="true"][data-ending-style] {
+  transition-duration: 220ms;
+}

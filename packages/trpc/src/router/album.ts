@@ -1,0 +1,82 @@
+import type { Album } from "@infinitunes/types";
+import { TRPCError } from "@trpc/server";
+import { z } from "zod";
+
+import { endpoints } from "../lib/endpoints";
+import {
+  albumInput,
+  albumRecommendInput,
+  albumSameYearInput,
+} from "../lib/inputs";
+import { publicProcedure, router } from "../trpc";
+import {
+  hasIdentity,
+  mapDownloadUrls,
+  resolveNumericId,
+  secondaryList,
+} from "./utils";
+
+export const albumRouter = router({
+  details: publicProcedure
+    .input(albumInput)
+    .output(z.custom<Album>())
+    .query(async ({ input, ctx: { catalogApi: api } }) => {
+      const { id, token, lang } = input;
+      if (!id && !token) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Please provide album id or a token",
+        });
+      }
+      const t = token ?? "";
+      const albumid = id ?? (await resolveNumericId(t, "album", api));
+      const result = await api(endpoints.album.id, {
+        query: {
+          albumid,
+          token: t,
+          type: "album",
+        },
+        language: lang,
+      });
+      if (!hasIdentity(result, "id")) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No album found, please check the id or token",
+        });
+      }
+      mapDownloadUrls(result, "list");
+      return result as Album;
+    }),
+
+  recommendations: publicProcedure
+    .input(albumRecommendInput)
+    .output(z.custom<Album[]>())
+    .query(async ({ input, ctx: { catalogApi: api } }) => {
+      const result = await secondaryList(() =>
+        api<Album[]>(endpoints.album.recommend, {
+          query: {
+            albumid: input.id,
+            language: input.lang,
+          },
+        }),
+      );
+      // Secondary list: no recommendations is not a missing album.
+      return Array.isArray(result) ? result : [];
+    }),
+
+  sameYear: publicProcedure
+    .input(albumSameYearInput)
+    .output(z.custom<Album[]>())
+    .query(async ({ input, ctx: { catalogApi: api } }) => {
+      const result = await secondaryList(() =>
+        api<Album[]>(endpoints.album.same_year, {
+          query: {
+            album_year: input.year,
+            album_lang: input.lang,
+          },
+        }),
+      );
+      // Secondary list on the album page.
+      return Array.isArray(result) ? result : [];
+    }),
+});

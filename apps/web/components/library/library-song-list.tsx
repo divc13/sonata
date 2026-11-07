@@ -1,0 +1,161 @@
+"use client";
+
+import type { Favorite, MyPlaylist } from "@infinitunes/db/schema";
+import type { SongRowItem } from "@infinitunes/types";
+import { decode } from "@infinitunes/types";
+import { Input } from "@infinitunes/ui/components/input";
+import { useMemo, useState } from "react";
+
+import type { User } from "~/lib/auth";
+import { controlStyles } from "~/lib/control-styles";
+import { cn } from "~/lib/utils";
+
+import { SongListClient } from "../song-list/song-list.client";
+import { PlayAllButton } from "./play-all-button";
+
+const SORT_KEYS = ["recent", "title", "artist"] as const;
+type SortKey = (typeof SORT_KEYS)[number];
+
+function isSortKey(value: string): value is SortKey {
+  return SORT_KEYS.some((key) => key === value);
+}
+
+/** Lowercase and strip diacritics so "beyonce" finds "Beyoncé". */
+function fold(text: string): string {
+  return text.normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase();
+}
+
+/** Row texts are already decoded on the server. */
+function primaryArtists(item: SongRowItem): string[] {
+  return item.primaryArtists.map((artist) => decode(artist.name));
+}
+
+function matchesQuery(item: SongRowItem, query: string): boolean {
+  const haystack = [item.name, item.subtitle, ...primaryArtists(item)].join(
+    " ",
+  );
+
+  return fold(haystack).includes(query);
+}
+
+function compareTitle(a: SongRowItem, b: SongRowItem): number {
+  return a.name.localeCompare(b.name);
+}
+
+function compareArtist(a: SongRowItem, b: SongRowItem): number {
+  return (
+    (primaryArtists(a)[0] ?? "").localeCompare(primaryArtists(b)[0] ?? "") ||
+    compareTitle(a, b)
+  );
+}
+
+type LibrarySongListProps = {
+  user?: User;
+  items: SongRowItem[];
+  userFavorites?: Favorite | null;
+  userPlaylists?: MyPlaylist[];
+  showAlbum?: boolean;
+  className?: string;
+  /** Label of the default (server-order) sort, e.g. "Recently played". */
+  recentLabel?: string;
+};
+
+/**
+ * Client-side sort and text filter over an already-loaded song list.
+ * `recent` keeps the server order, which callers pass newest-first.
+ * Play All plays the visible (sorted and filtered) order.
+ */
+export function LibrarySongList(props: LibrarySongListProps) {
+  const {
+    user,
+    items,
+    userFavorites,
+    userPlaylists,
+    showAlbum,
+    className,
+    recentLabel = "Recently added",
+  } = props;
+
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<SortKey>("recent");
+
+  const visible = useMemo(() => {
+    const q = fold(query.trim());
+    const filtered = q ? items.filter((item) => matchesQuery(item, q)) : items;
+
+    if (sort === "title") return [...filtered].sort(compareTitle);
+    if (sort === "artist") return [...filtered].sort(compareArtist);
+    return filtered;
+  }, [items, query, sort]);
+
+  return (
+    <div className={className}>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <Input
+          type="search"
+          aria-label="Filter songs"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Filter by title or artist"
+          className={cn(
+            controlStyles.textLg,
+            "w-full border-0 bg-fill hover:bg-fill-2 sm:max-w-xs dark:bg-fill dark:hover:bg-fill-2",
+          )}
+        />
+
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          Sort
+          <select
+            aria-label="Sort songs"
+            value={sort}
+            onChange={(e) => {
+              if (isSortKey(e.target.value)) setSort(e.target.value);
+            }}
+            className={cn(
+              controlStyles.textLg,
+              "bg-fill text-sm text-foreground hover:bg-fill-2",
+            )}
+          >
+            <option value="recent">{recentLabel}</option>
+            <option value="title">Title A-Z</option>
+            <option value="artist">Artist A-Z</option>
+          </select>
+        </label>
+
+        {query.trim() && visible.length > 0 && (
+          <output
+            aria-live="polite"
+            className="text-sm text-muted-foreground tabular-nums"
+          >
+            {visible.length} of {items.length}
+          </output>
+        )}
+
+        {visible.length > 0 && (
+          <PlayAllButton
+            items={visible}
+            className={cn(controlStyles.textLg, "sm:ml-auto")}
+          >
+            {visible.length === items.length
+              ? undefined
+              : `Play ${visible.length} shown`}
+          </PlayAllButton>
+        )}
+      </div>
+
+      {visible.length ? (
+        <SongListClient
+          user={user}
+          items={visible}
+          showAlbum={showAlbum}
+          userFavorites={userFavorites}
+          userPlaylists={userPlaylists}
+        />
+      ) : (
+        <output className="block py-10 text-center text-sm text-muted-foreground">
+          No songs match &quot;{query.trim()}&quot;.
+        </output>
+      )}
+    </div>
+  );
+}
