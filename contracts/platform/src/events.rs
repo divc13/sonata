@@ -78,6 +78,21 @@ pub fn emit_payout_sent(
     );
 }
 
+pub fn emit_song_account_changed(
+    token_id: &str,
+    previous: Option<&AccountId>,
+    account_id: &AccountId,
+) {
+    emit_sonata(
+        "song_account_changed",
+        json!({
+            "token_id": token_id,
+            "previous_account_id": previous.map(|id| id.to_string()),
+            "account_id": account_id.to_string(),
+        }),
+    );
+}
+
 pub fn emit_reserve_targets_changed(reserve_target: U128, one_month_reserve: U128) {
     emit_sonata(
         "reserve_targets_changed",

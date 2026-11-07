@@ -53,4 +53,15 @@ impl Contract {
     pub fn get_song_account(&self, token_id: TokenId) -> Option<AccountId> {
         self.song_accounts.get(&token_id)
     }
+
+    /// Owner-only migration hook: point an existing master at a replacement
+    /// song account (for example a redeployed wallet with fixed code).
+    ///
+    /// This only updates the payout mapping. NFT ownership, balances and
+    /// listening history are untouched, and there is no demo reset here.
+    pub fn set_song_account(&mut self, token_id: TokenId, account_id: AccountId) {
+        self.assert_owner();
+        let previous = self.song_accounts.insert(&token_id, &account_id);
+        events::emit_song_account_changed(&token_id, previous.as_ref(), &account_id);
+    }
 }
