@@ -109,9 +109,14 @@ describe("sonata mutations", () => {
   it("pass.buy only accepts the listener role", async () => {
     const { caller, calls } = fakeChain();
 
-    await expect(caller.sonata.pass.buy({ role: "listener" })).resolves.toEqual(
-      SUCCESS,
-    );
+    await expect(
+      caller.sonata.pass.buy({ role: "listener" }),
+    ).resolves.toMatchObject({
+      txHash: SUCCESS.txHash,
+      outcome: "success",
+      /* The fake db cannot sync, so the chain result is still a success. */
+      synced: false,
+    });
     expect(calls).toEqual([{ method: "buyPass", args: ["listener"] }]);
 
     await expect(
@@ -132,7 +137,11 @@ describe("sonata mutations", () => {
         tokenId: "midnight-drive",
         expectedPriceUsdc: "50000000",
       }),
-    ).resolves.toEqual(SUCCESS);
+    ).resolves.toMatchObject({
+      txHash: SUCCESS.txHash,
+      outcome: "success",
+      synced: false,
+    });
 
     expect(calls).toEqual([
       {
