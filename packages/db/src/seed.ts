@@ -23,7 +23,26 @@ async function seed() {
     );
   }
 
-  assertLocalDatabase(databaseUrl);
+  const hostedSeed = process.env.SONATA_SEED_ALLOW_REMOTE === "true";
+
+  if (hostedSeed) {
+    /*
+     * Hosted demos (Vercel + Neon/Supabase) live on a managed database, so the
+     * loopback guard cannot apply. Requiring this exact opt-in keeps a plain
+     * `bun run db:seed` from ever writing to a remote database by accident.
+     * The seed still never runs under NODE_ENV=production.
+     */
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        "[seed] Refusing to run: SONATA_SEED_ALLOW_REMOTE is not allowed with NODE_ENV=production.",
+      );
+    }
+    console.warn(
+      "[seed] SONATA_SEED_ALLOW_REMOTE=true: seeding a hosted database (not loopback).",
+    );
+  } else {
+    assertLocalDatabase(databaseUrl);
+  }
 
   const fixture = getLocalDevFixture();
   const { user: localDevUser, infinitunes: localDevInfinitunes } = fixture;

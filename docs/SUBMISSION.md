@@ -41,21 +41,54 @@ The lead owns the merge, the visibility change, and the final form.
 - No claim that the app is mainnet-ready, audited, profitable, or that the
   seeded history is live chain state.
 
+## Hosted demo
+
+A Vercel-hosted demo is prepared but **not live yet**. The deployment URL will be
+recorded here and in the README after the first successful deployment and smoke test;
+until then, treat any URL as unverified. The exact project settings, environment
+names, database migration/seed steps and smoke commands are in
+[`ops/vercel.md`](../ops/vercel.md).
+
+What judges should try once the link exists:
+
+1. Open `/` and play **Midnight Drive**. The player should show the song earning
+   `$0.03/hr` for `@nadia`; audio and covers are served from the deployment.
+2. Open `/pass` and read the `$5 / 30 days` receipt (or buy it if the demo listener
+   has no active pass).
+3. Open `/market`, then `/master/midnight-drive` and its **Chain** tab: the master is
+   a 1-of-1 NFT whose keyless song account holds the balance and received the payout.
+4. Open `/audit` to see the seeded demo epochs, the reserve bar and the next real
+   epoch id.
+5. Sign in with the demo account to see `/library` and `/artist/dashboard`:
+   `local@example.test` / `LocalDev123!`. This account is intentionally public and
+   exists only in the demo database.
+6. Try `/search?q=midnight` for the non-Sonata catalog search.
+
+Notes for judges:
+
+- Everything chain-related is **NEAR testnet** with mock USDC. There are no real
+  funds and no mainnet deployment.
+- The database contains a seeded demo snapshot (8 epochs at negative ids); it is not
+  a claim of live on-chain settlement. The `/audit` page labels the seeded history.
+- If the deployment is protected, the submission form carries the access
+  instructions. Otherwise the link is open and demo writes (pass purchase, master
+  sale, settlement) are expected to change testnet state.
+
 ## Testnet proof
 
 The deployment record is [`ops/testnet.md`](../ops/testnet.md). It contains the
 account table, contract code hashes, deployment transactions, the 12 mint
 transactions, the five approve/list pairs and the listener pass purchase.
 
-| Proof | Where |
-| --- | --- |
-| Contract accounts and NEAR balances | `ops/testnet.md`, "Identifiers" |
-| Deployment transactions and code hashes | `ops/testnet.md`, "Deployed state" |
-| 12 mint transactions | `ops/testnet.md`, "Demo chain writes" |
-| Five listings (approve + list) | `ops/testnet.md`, "Demo chain writes" |
-| Pass purchase | `ops/testnet.md`, `3NDAvwfaDm2c3TAn2ypmfLNpLahoCHiCUaub3jSsdcqL` |
-| Keyless song accounts | `./scripts/check-demo.sh`, `access keys: 0` for all 12 |
-| Current platform state | `platform.get_stats`: `next_epoch_id = 1`, `total_paid = 0`, `rate_per_hour = 30000`, reserve targets `900000000` / `300000000` |
+| Proof                                   | Where                                                                                                                           |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Contract accounts and NEAR balances     | `ops/testnet.md`, "Identifiers"                                                                                                 |
+| Deployment transactions and code hashes | `ops/testnet.md`, "Deployed state"                                                                                              |
+| 12 mint transactions                    | `ops/testnet.md`, "Demo chain writes"                                                                                           |
+| Five listings (approve + list)          | `ops/testnet.md`, "Demo chain writes"                                                                                           |
+| Pass purchase                           | `ops/testnet.md`, `3NDAvwfaDm2c3TAn2ypmfLNpLahoCHiCUaub3jSsdcqL`                                                                |
+| Keyless song accounts                   | `./scripts/check-demo.sh`, `access keys: 0` for all 12                                                                          |
+| Current platform state                  | `platform.get_stats`: `next_epoch_id = 1`, `total_paid = 0`, `rate_per_hour = 30000`, reserve targets `900000000` / `300000000` |
 
 Run the proof yourself before submitting:
 
