@@ -64,16 +64,16 @@ export function isDemoEpochId(id: number): boolean {
 }
 
 /**
- * `-3` -> `"Demo 3"`, `0` -> `"Epoch 0"`. Negative ids are seeded history and
- * must never read like a chain epoch id.
+ * `-3` -> `"Archive 3"`, `0` -> `"Epoch 0"`. Negative ids are archival history
+ * and must never read like a chain epoch id.
  */
 export function formatEpochLabel(id: number): string {
-  return isDemoEpochId(id) ? `Demo ${-id}` : `Epoch ${id}`;
+  return isDemoEpochId(id) ? `Archive ${-id}` : `Epoch ${id}`;
 }
 
-/** Compact chart label: `-3` -> `"D3"`, `0` -> `"E0"`. */
+/** Compact chart label: `-3` -> `"A3"`, `0` -> `"E0"`. */
 export function epochAxisLabel(id: number): string {
-  return isDemoEpochId(id) ? `D${-id}` : `E${id}`;
+  return isDemoEpochId(id) ? `A${-id}` : `E${id}`;
 }
 
 const epochDate = new Intl.DateTimeFormat("en-US", {

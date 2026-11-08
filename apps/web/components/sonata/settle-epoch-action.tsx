@@ -65,8 +65,7 @@ export function SettleEpochAction({ nextEpochId }: SettleEpochActionProps) {
         {pending ? "Settling…" : `Settle epoch ${nextEpochId}`}
       </button>
       <p className="text-xs text-muted-foreground">
-        {notice ??
-          "Demo operator action. Settles at the computed rate and total."}
+        {notice ?? "Settlement action. Settles at the computed rate and total."}
       </p>
     </div>
   );

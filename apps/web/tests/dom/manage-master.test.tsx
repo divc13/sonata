@@ -95,11 +95,11 @@ describe("manage master view", () => {
       />,
     );
 
-    expect(html).toContain("no demo signer");
+    expect(html).toContain("No testnet signer is configured");
     expect(html).not.toContain("Withdraw earnings");
   });
 
-  it("always renders the clearly-labelled demo switcher", () => {
+  it("always renders the viewer switcher", () => {
     const html = renderToStaticMarkup(
       <ManageMasterView
         {...base}
@@ -108,7 +108,7 @@ describe("manage master view", () => {
       />,
     );
 
-    expect(html).toContain("Demo: view as");
+    expect(html).toContain("View as");
     expect(html).toContain("Nadia");
     expect(html).toContain("Collector");
     expect(html).toContain("Listener");

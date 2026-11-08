@@ -36,10 +36,10 @@ export function DemoViewerSwitcher({
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-dashed border-border/70 bg-fill/40 px-3 py-2.5">
       <span className="text-[0.6875rem] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
-        Demo: view as
+        View as
       </span>
       <fieldset className="m-0 flex min-w-0 items-center gap-1 border-0 p-0">
-        <legend className="sr-only">Demo viewer</legend>
+        <legend className="sr-only">Viewer</legend>
         {DEMO_VIEWER_OPTIONS.map((option) => {
           const active = option.accountId === viewerAccountId;
           return (

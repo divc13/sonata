@@ -38,8 +38,7 @@ export function assertSonataDemoMode(): void {
   if (!isSonataDemoMode()) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message:
-        "Sonata demo actions are disabled. Set SONATA_DEMO_MODE=true on the server.",
+      message: "Testnet actions are unavailable on this deployment.",
     });
   }
 }

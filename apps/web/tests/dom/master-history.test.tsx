@@ -68,7 +68,7 @@ describe("master history timeline", () => {
     expect(events.map(historyEventLabel)).toEqual([
       "Minted",
       "Listed for sale",
-      "Demo 2 payout",
+      "Archive 2 payout",
       "Sold to buyer.sonata.testnet",
     ]);
     expect(events.map((event) => event.at.toISOString())).toEqual([
@@ -91,7 +91,7 @@ describe("master history timeline", () => {
     const labels = [
       "Minted",
       "Listed for sale",
-      "Demo 2 payout",
+      "Archive 2 payout",
       "Sold to buyer.sonata.testnet",
     ];
     const positions = labels.map((label) => html.indexOf(label));

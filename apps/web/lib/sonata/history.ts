@@ -129,9 +129,9 @@ export function formatHistoryHours(seconds: number): string {
   return `${(seconds / 3600).toFixed(2)} h`;
 }
 
-/** Seeded demo history uses negative ids; real chain epochs start at 1. */
+/** Archival history uses negative ids; real chain epochs start at 1. */
 export function formatHistoryEpoch(epochId: number): string {
-  return epochId < 0 ? `Demo ${-epochId}` : `Epoch ${epochId}`;
+  return epochId < 0 ? `Archive ${-epochId}` : `Epoch ${epochId}`;
 }
 
 const historyDate = new Intl.DateTimeFormat("en-US", {

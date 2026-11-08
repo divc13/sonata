@@ -363,12 +363,12 @@ describe("sonata mutations", () => {
     });
   });
 
-  it("surfaces a missing demo signer without exposing a key", async () => {
+  it("surfaces a missing testnet signer without exposing a key", async () => {
     const { caller } = fakeChain({
       buyPass: async () => {
         throw new SonataChainError(
           "missing-key",
-          'No demo signer is configured for "listener". Set SONATA_DEMO_LISTENER_SECRET_KEY on the server.',
+          'No testnet signer is configured for "listener". Set SONATA_DEMO_LISTENER_SECRET_KEY on the server.',
         );
       },
     });

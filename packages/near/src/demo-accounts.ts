@@ -49,7 +49,7 @@ export function getDemoSigner(role: DemoRole): DemoSigner {
   if (!secretKey) {
     throw new SonataChainError(
       "missing-key",
-      `No demo signer is configured for "${role}". Set ${account.secretKeyEnv} on the server.`,
+      `No testnet signer is configured for "${role}". Set ${account.secretKeyEnv} on the server.`,
     );
   }
 

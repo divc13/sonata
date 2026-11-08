@@ -70,7 +70,7 @@ async function resolveWithdrawTarget(
   if (cached.ownerAccountId !== signerAccountId) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: `Only the current owner can withdraw: "${tokenId}" is owned by ${cached.ownerAccountId}, but the "${role}" demo signer is ${signerAccountId}.`,
+      message: `Only the current owner can withdraw: "${tokenId}" is owned by ${cached.ownerAccountId}, but this signer is ${signerAccountId}.`,
     });
   }
 
