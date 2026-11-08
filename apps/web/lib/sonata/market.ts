@@ -48,6 +48,15 @@ export function formatIncludedBalance(
 }
 
 /**
+ * A song-account balance column cell. `null` means the RPC read failed, and an
+ * unparseable value is treated the same way, so the cell stays truthful instead
+ * of claiming `$0.00`. Real zero balances still render as `$0.00`.
+ */
+export function formatBalanceMicro(micro: string | null | undefined): string {
+  return formatIncludedBalance(micro) ?? "—";
+}
+
+/**
  * A user-typed dollar amount (`"50"`, `"50.00"`, `"$1,250.50"`) to a positive
  * micro-USDC integer string. Prices carry at most two decimal places; returns
  * `null` for anything that is not a positive dollar amount.
