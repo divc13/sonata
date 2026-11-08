@@ -7,6 +7,7 @@ import type {
 
 import {
   demoRoleForOwner,
+  formatBalanceMicro,
   formatUsdMicro2,
   selectListingForToken,
   usdToMicroUsdc,
@@ -61,6 +62,28 @@ describe("micro-USDC formatting", () => {
   it("groups thousands and keeps the sign", () => {
     expect(formatUsdMicro2("1234567890")).toBe("$1,234.57");
     expect(formatUsdMicro2("-2500000")).toBe("-$2.50");
+  });
+
+  it("renders the dashboard's raw earnings as whole cents", () => {
+    expect(formatUsdMicro2("26564672")).toBe("$26.56");
+    expect(formatUsdMicro2("48263261")).toBe("$48.26");
+    expect(formatUsdMicro2("2076116")).toBe("$2.08");
+    expect(formatUsdMicro2("14272658")).toBe("$14.27");
+  });
+});
+
+describe("song-account balance column", () => {
+  it("formats a live balance with two decimals", () => {
+    expect(formatBalanceMicro("0")).toBe("$0.00");
+    expect(formatBalanceMicro("1234567")).toBe("$1.23");
+    expect(formatBalanceMicro("26564672")).toBe("$26.56");
+  });
+
+  it("shows — only when the read failed or was unparseable", () => {
+    expect(formatBalanceMicro(null)).toBe("—");
+    expect(formatBalanceMicro(undefined)).toBe("—");
+    expect(formatBalanceMicro("")).toBe("—");
+    expect(formatBalanceMicro("not-a-number")).toBe("—");
   });
 });
 

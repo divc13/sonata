@@ -1,5 +1,4 @@
 import { RATE_PER_HOUR_USDC_MICRO } from "@infinitunes/near";
-import { Plus } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -17,10 +16,11 @@ import {
   epochAxisLabel,
   formatEpochLabel,
   formatListenHours,
-  formatMicroUsd,
   formatRatePerHour,
   sumMicro,
 } from "~/lib/sonata-display";
+import { readSongAccountBalances } from "~/lib/sonata/balances";
+import { formatBalanceMicro, formatUsdMicro2 } from "~/lib/sonata/market";
 import { api } from "~/lib/trpc/server";
 
 export const metadata = pageMetadata({
@@ -65,6 +65,11 @@ async function DashboardContent() {
       api.sonata.songs.byId({ tokenId: song.tokenId }),
     ),
   );
+  // One parallel read per song account; a failed read stays `null` and shows `—`
+  // in that row instead of breaking the page.
+  const balances = await readSongAccountBalances(
+    artist.songs.map((song) => song.subAccount),
+  );
   const tokenIds = new Set(artist.songs.map((song) => song.tokenId));
   const recentPayouts = details.flatMap((detail) => detail.recentPayouts);
   const epochEarnings = earningsByEpoch(recentPayouts, tokenIds);
@@ -98,7 +103,7 @@ async function DashboardContent() {
             Total earnings, 30 days
           </dt>
           <dd className="font-heading text-2xl leading-8 font-semibold tracking-[-0.015em] tabular-nums">
-            {formatMicroUsd(artist.earnings30dUsdc)}
+            {formatUsdMicro2(artist.earnings30dUsdc)}
           </dd>
           <p className="text-xs text-muted-foreground">
             Settled payouts, trailing 30 days
@@ -118,7 +123,7 @@ async function DashboardContent() {
             Settled history
           </dt>
           <dd className="font-heading text-2xl leading-8 font-semibold tracking-[-0.015em] tabular-nums">
-            {formatMicroUsd(settledMicro)}
+            {formatUsdMicro2(settledMicro)}
           </dd>
           <p className="text-xs text-muted-foreground">
             {epochEarnings.length === 0
@@ -159,7 +164,7 @@ async function DashboardContent() {
           <EarningsBars
             data={chartData}
             labels={chartLabels}
-            summary={`Your masters settled ${formatMicroUsd(settledMicro)} across ${epochEarnings.length} epochs.`}
+            summary={`Your masters settled ${formatUsdMicro2(settledMicro)} across ${epochEarnings.length} epochs.`}
           />
         )}
       </section>
@@ -236,7 +241,7 @@ async function DashboardContent() {
                     </span>
                   </td>
                   <td className="px-3 py-3 text-right font-medium text-primary tabular-nums">
-                    {formatMicroUsd(song.earnings30dUsdc)}
+                    {formatUsdMicro2(song.earnings30dUsdc)}
                   </td>
                   <td className="px-3 py-3 text-muted-foreground">
                     <span className="block max-w-44 truncate font-mono text-xs">
@@ -244,10 +249,10 @@ async function DashboardContent() {
                     </span>
                   </td>
                   <td
-                    className="px-3 py-3 text-right text-muted-foreground"
-                    title="Read from the song account at withdrawal time"
+                    className="px-3 py-3 text-right text-muted-foreground tabular-nums"
+                    title="Live balance held by this song account"
                   >
-                    —
+                    {formatBalanceMicro(balances.get(song.subAccount))}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <WithdrawAction tokenId={song.tokenId} title={song.title} />
@@ -258,8 +263,8 @@ async function DashboardContent() {
           </table>
         </div>
         <p className="max-w-2xl text-xs leading-5 text-muted-foreground">
-          Withdraw sends a song account&apos;s full balance to your wallet; the
-          balance is read at withdrawal time, not carried in this list.
+          Balances are read live from each song account. Withdraw sends a song
+          account&apos;s full balance to your wallet.
         </p>
       </section>
 
@@ -290,7 +295,7 @@ async function DashboardContent() {
                   key={epoch.epochId}
                   title={formatEpochLabel(epoch.epochId)}
                   meta={formatListenHours(epoch.seconds)}
-                  value={formatMicroUsd(epoch.amountUsdc)}
+                  value={formatUsdMicro2(epoch.amountUsdc)}
                   detail="Settled in USDC"
                 />
               ))}
@@ -343,13 +348,9 @@ export default function ArtistDashboardPage() {
           </p>
         </div>
 
-        <button
-          type="button"
-          className="inline-flex h-(--ctl-lg) items-center gap-2 rounded-(--r-ctl) bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors duration-fast hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-        >
-          <Plus aria-hidden="true" className="size-4" />
-          Publish a master
-        </button>
+        <p className="max-w-56 text-right text-xs leading-5 text-muted-foreground">
+          Publishing opens after the hackathon.
+        </p>
       </header>
 
       <Suspense fallback={<DashboardSkeleton />}>
