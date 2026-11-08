@@ -42,10 +42,50 @@ Import the repository once, then set:
 | Function Region                             | same region as the database                | Serverless queries are latency-bound; keep them co-located.                                                                                    |
 | Build Machine                               | default                                    | The build is small; no extra memory needed.                                                                                                    |
 
-Do not set a custom `distDir` or `output: "standalone"`. Do not add a `buildCommand`
-that `cd`s, and do not put a Root Directory in `vercel.json` (it is a project setting,
-not a repo setting). `vercel.json` intentionally contains only the Next.js preset,
-the install command and git gating.
+Do not set a custom `distDir` or `output: "standalone"`. Do not put a Root Directory
+in `vercel.json` (it is a project setting, not a repo setting).
+
+### Monorepo working directory (verified)
+
+Vercel's build documentation says the install path is set by the Root Directory, so
+these commands are expected to run with `apps/web` as the working directory. That is
+safe even though the only `bun.lock` is at the repository root: Bun walks up to the
+workspace root, installs `apps/web`'s dependencies, its workspace-package
+dependencies, and the root devDependencies (including `turbo`).
+
+Verified in a clean checkout with no `node_modules` (not just in the existing local
+tree):
+
+| Command (working directory `apps/web`) | Result                                                              |
+| -------------------------------------- | ------------------------------------------------------------------- |
+| `bun install --frozen-lockfile`        | 594 packages installed; root `node_modules/turbo` present           |
+| `bun run build`                        | success: 54 pages, `ƒ Proxy (Middleware)`, `.next/BUILD_ID` written |
+| `bun install --filter web --dry-run`   | success (Vercel's own filtered-install example)                     |
+
+The same `bun run build` also succeeds when run from the repository root (it runs the
+root `build` script through Turbo). That is why the settings above use **no `cd`**:
+the commands work whether Vercel executes them in `apps/web` or at the repo root.
+
+If you prefer the explicit repo-root form, it is:
+
+```bash
+# only valid when the working directory is apps/web
+cd ../.. && bun install --frozen-lockfile
+cd ../.. && bun run build --filter=@infinitunes/web
+```
+
+That form is **not recommended**: it works when Vercel uses the Root Directory as the
+working directory, but fails if Vercel executes at the repo root (`cd ../..` leaves
+the checkout). Vercel's Turborepo guide lists both `turbo run build` (no `cd`) and the
+explicit `cd ../..` form; the no-`cd` form is the one that does not depend on the
+working directory, because automatic workspace scoping infers the app from the Root
+Directory.
+
+The dashboard values in the table are authoritative. The repo-root `vercel.json`
+repeats the install/build commands and the git gate as a fallback. Vercel documents
+file-based project configuration in the project's root directory, so if build
+settings are ever moved into a file, put them in `apps/web/vercel.json` and confirm
+they appear in the build log; do not rely on the repo-root file for build overrides.
 
 `proxy.ts` is Next 16 middleware (the file was renamed from `middleware.ts`). It runs
 on the Node runtime; no Edge runtime flag is needed. A successful build prints
