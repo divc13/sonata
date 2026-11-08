@@ -96,9 +96,8 @@ export function ManageMasterView({
 
           <DemoViewerSwitcher viewerAccountId={viewerAccountId} />
           <p className="text-[0.6875rem] leading-4 text-muted-foreground">
-            This demo control only chooses which identity the page compares
-            against the owner record. The owner check itself always runs on the
-            server.
+            This selector only changes which account the page compares. The
+            owner check always runs on the server.
           </p>
         </div>
       </header>
@@ -209,8 +208,8 @@ export function ManageMasterView({
               . Earnings, resale and ownership controls stay hidden.
             </p>
             <p className="text-xs leading-5 text-muted-foreground">
-              Switch the demo identity above to see the holder view. The public
-              master page stays open to everyone.
+              Switch the viewer above to see the holder view. The public master
+              page stays open to everyone.
             </p>
           </div>
           <Link href={masterHref} className={linkClass}>

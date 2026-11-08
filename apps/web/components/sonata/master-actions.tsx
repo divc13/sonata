@@ -120,10 +120,10 @@ export function MasterActions({
     <section className="flex flex-col gap-4 rounded-xl border border-border/60 bg-card p-5">
       <div className="flex flex-col gap-1">
         <h2 className="font-heading text-base font-semibold tracking-[-0.01em]">
-          Demo actions
+          Manage actions
         </h2>
         <p className="text-xs leading-5 text-muted-foreground">
-          Testnet only, signed by a seeded demo account.
+          Executed on NEAR testnet.
         </p>
       </div>
 

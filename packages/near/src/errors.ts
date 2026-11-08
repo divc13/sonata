@@ -97,7 +97,7 @@ const PANIC_EXPLANATIONS: Record<string, string> = {
   "Deposit too small": "attach at least the contract's storage deposit",
   "Epoch id mismatch": "the epoch is not the next one to settle",
   "Empty epoch": "an epoch must contain at least one payout entry",
-  "Insufficient balance": "the demo account does not hold enough USDC",
+  "Insufficient balance": "the account does not hold enough USDC",
   "Insufficient payment": "the payment amount does not match the price",
   "Invalid token id": "the master token id is not a valid slug",
   "Listing not active": "this listing is no longer active",
@@ -115,7 +115,7 @@ const PANIC_EXPLANATIONS: Record<string, string> = {
   "Song not registered": "the master has no registered song account",
   "Song already registered": "this master is already registered",
   "The account is not registered":
-    "the demo account is not registered on the USDC contract",
+    "the account is not registered on the USDC contract",
   "Token already exists": "that master token id is already minted",
   "Unsorted entries": "settlement entries must be sorted and unique",
   "Wrong amount": "the payment amount does not match the listing price",

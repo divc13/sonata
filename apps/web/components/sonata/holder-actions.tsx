@@ -47,8 +47,8 @@ export function HolderActions({
           Holder actions
         </h2>
         <p className="text-xs leading-5 text-muted-foreground">
-          This account has no demo signer, so withdrawals and resale are
-          unavailable in the demo. The owner record is unchanged.
+          No testnet signer is configured for this account, so withdrawal and
+          resale are unavailable. The owner record is unchanged.
         </p>
       </section>
     );

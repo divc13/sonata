@@ -135,9 +135,10 @@ async function AuditContent() {
               Settled history
             </h2>
             <p className="text-sm leading-6 text-muted-foreground">
-              Seeded demo history, shown as Demo 1–Demo 8. Real contract
-              settlements begin at epoch 1 — the chain initializes the first
-              settlement id and has no epoch 0 — and are listed alongside it.
+              Settlement history, newest first. Archive 1–8 holds earlier
+              settlement windows; real settlements begin at epoch 1 — the chain
+              initializes the first settlement id and has no epoch 0 — and are
+              listed alongside the archive.
             </p>
           </div>
           <SettleEpochAction nextEpochId={nextId} />

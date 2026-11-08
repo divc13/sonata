@@ -78,17 +78,17 @@ describe("next epoch calculation", () => {
 });
 
 describe("epoch labels", () => {
-  it("separates seeded demo history from chain epochs", () => {
+  it("separates archival history from chain epochs", () => {
     expect(isDemoEpochId(-1)).toBe(true);
     expect(isDemoEpochId(0)).toBe(false);
-    expect(formatEpochLabel(-1)).toBe("Demo 1");
-    expect(formatEpochLabel(-8)).toBe("Demo 8");
+    expect(formatEpochLabel(-1)).toBe("Archive 1");
+    expect(formatEpochLabel(-8)).toBe("Archive 8");
     expect(formatEpochLabel(0)).toBe("Epoch 0");
     expect(formatEpochLabel(12)).toBe("Epoch 12");
   });
 
   it("keeps chart labels compact", () => {
-    expect(epochAxisLabel(-3)).toBe("D3");
+    expect(epochAxisLabel(-3)).toBe("A3");
     expect(epochAxisLabel(0)).toBe("E0");
   });
 });

@@ -114,11 +114,9 @@ describe("PassBuyAction", () => {
     expect(refresh).toHaveBeenCalledTimes(1);
   });
 
-  it("shows the demo-disabled server message and leaves the button usable", async () => {
+  it("shows the testnet-disabled server message and leaves the button usable", async () => {
     buyResult = async () => {
-      throw new Error(
-        "Sonata demo actions are disabled. Set SONATA_DEMO_MODE=true on the server.",
-      );
+      throw new Error("Testnet actions are unavailable on this deployment.");
     };
     const button = await mount(false);
 
@@ -128,8 +126,7 @@ describe("PassBuyAction", () => {
       {
         kind: "error",
         message: "Could not buy the pass",
-        description:
-          "Sonata demo actions are disabled. Set SONATA_DEMO_MODE=true on the server.",
+        description: "Testnet actions are unavailable on this deployment.",
       },
     ]);
     expect(refresh).not.toHaveBeenCalled();
@@ -141,7 +138,7 @@ describe("PassBuyAction", () => {
     buyResult = async () => {
       throw Object.assign(
         new Error(
-          "Insufficient balance: the demo account does not hold enough USDC.",
+          "Insufficient balance: the account does not hold enough USDC.",
         ),
         { code: "PRECONDITION_FAILED" },
       );
@@ -155,7 +152,7 @@ describe("PassBuyAction", () => {
         kind: "error",
         message: "Could not buy the pass",
         description:
-          "Insufficient balance: the demo account does not hold enough USDC.",
+          "Insufficient balance: the account does not hold enough USDC.",
       },
     ]);
   });

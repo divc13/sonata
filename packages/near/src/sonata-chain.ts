@@ -96,7 +96,7 @@ function isDemoRole(value: string): value is DemoRole {
 
 function assertDemoRole(role: string): DemoRole {
   if (!isDemoRole(role)) {
-    throw new SonataChainError("invalid-input", `Unknown demo role "${role}".`);
+    throw new SonataChainError("invalid-input", `Unknown role "${role}".`);
   }
   return role;
 }

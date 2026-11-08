@@ -189,7 +189,7 @@ async function PassContent() {
         <p className="text-center text-xs leading-5 text-muted-foreground">
           {active
             ? "Your pass is active. Listening now counts toward artist payouts."
-            : `Demo checkout as ${DEMO_LISTENER}. No card is charged.`}
+            : `Testnet checkout · ${DEMO_LISTENER} · no card charged.`}
         </p>
       </section>
 
