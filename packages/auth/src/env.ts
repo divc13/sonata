@@ -29,10 +29,16 @@ export function authSchema(ctx: AuthEnvContext = {}) {
         resolveAuthUrl(typeof value === "string" ? value : undefined, ctx),
       z.url(),
     ),
-    GOOGLE_CLIENT_ID: requiredInProduction(),
-    GOOGLE_CLIENT_SECRET: requiredInProduction(),
-    GITHUB_CLIENT_ID: requiredInProduction(),
-    GITHUB_CLIENT_SECRET: requiredInProduction(),
+    /*
+     * OAuth is optional: `createAuth` registers a provider only when both its
+     * halves are set, and `/login` hides a provider without credentials. A
+     * deployment must build with no OAuth app configured (the demo uses the
+     * password login), so these are never required in production.
+     */
+    GOOGLE_CLIENT_ID: z.string().optional(),
+    GOOGLE_CLIENT_SECRET: z.string().optional(),
+    GITHUB_CLIENT_ID: z.string().optional(),
+    GITHUB_CLIENT_SECRET: z.string().optional(),
     RESEND_API_KEY: z.string().optional(),
     EMAIL_FROM: z.string().optional(),
     BETTER_AUTH_URL: z.url().optional(),
