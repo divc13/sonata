@@ -38,6 +38,7 @@ bun.lockb
 
 # binary evidence (screenshots, recordings) stored outside repo
 /docs/**/evidence/
+artifacts/
 
 # Rust build artifacts
 contracts/target/
