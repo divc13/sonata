@@ -11,8 +11,9 @@
 **Voice:** Microsoft Edge TTS `en-US-AndrewNeural`, rate **-13%**, final
 **1.055× atempo**. **150.2 wpm** voice-only; **140.7 wpm** full cut including the
 closing hold. **380 words.**
-**Music:** original generated ambient bed, **-18 dB** fader and **3:1
-sidechain** duck; final mix **-14.0 LUFS**, true peak **-2.46 dBFS**.
+**Music:** original generated **104 BPM** synth bed with a soft pulse/percussion,
+**-18 dB** fader and **3:1 sidechain** duck; final mix **-13.9 LUFS**, true peak
+**-1.5 dBFS**.
 **Previous final:** `artifacts/video-project/cuts/sonata-pitch-v5-1080p.mp4`
 (v5, 2:31.42, 1080p) is preserved.
 
