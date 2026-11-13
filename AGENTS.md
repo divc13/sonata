@@ -413,7 +413,9 @@ for static files here.
   checked before Postgres is touched.
 - `packages/near/src/wallet.ts` (`createSonataWallet`, injectable like
   `createSonataChain`) owns the view reads and `transferUsdc`
-  (`usdc.ft_transfer`, 1 yocto, `FT_TRANSFER_GAS`). Faucet key:
+  (`usdc.storage_deposit` with 0.01 NEAR, then `usdc.ft_transfer` with 1 yocto
+  in a second call — the token contract panics on an unregistered receiver).
+  Faucet key:
   `SONATA_FAUCET_SECRET_KEY`, falling back to
   `SONATA_DEMO_COLLECTOR_SECRET_KEY` locally; account
   `SONATA_FAUCET_ACCOUNT_ID` (default `collector.sonata.testnet`). One grant is

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "bun:test";
 
 import {
+  buildUsdcStorageDepositCall,
   buildUsdcTransferCall,
   createSonataWallet,
+  DEFAULT_FUNCTION_CALL_GAS,
   FAUCET_ACCOUNT_ID,
   FAUCET_FALLBACK_SECRET_KEY_ENV,
   FAUCET_GRANT_USDC_MICRO,
@@ -10,6 +12,7 @@ import {
   FT_TRANSFER_GAS,
   getFaucetSigner,
   SonataChainError,
+  USDC_STORAGE_DEPOSIT_YOCTO,
   type CallOptions,
   type ChainAccount,
   type ChainResult,
@@ -38,6 +41,8 @@ function setup(
     viewResult?: unknown;
     viewError?: Error;
     callError?: Error;
+    /** 1-based call index that throws `callError`; all calls when omitted. */
+    failAtCall?: number;
     signer?: FaucetSigner;
   } = {},
 ) {
@@ -75,7 +80,13 @@ function setup(
         args,
         options: callOptions,
       });
-      if (options.callError) throw options.callError;
+      if (
+        options.callError &&
+        (options.failAtCall === undefined ||
+          options.failAtCall === calls.length)
+      ) {
+        throw options.callError;
+      }
       return { txHash: "0xfaucet", outcome: "success" };
     },
   });
@@ -168,7 +179,18 @@ describe("USDC transfer call", () => {
     );
   });
 
-  it("signs as the faucet and returns the landed hash", async () => {
+  it("builds the registration call with the 0.01 NEAR storage deposit", () => {
+    expect(buildUsdcStorageDepositCall("alice.testnet")).toMatchObject({
+      contractId: "usdc-sonata.testnet",
+      method: "storage_deposit",
+      deposit: 10_000_000_000_000_000_000_000n,
+      gas: DEFAULT_FUNCTION_CALL_GAS,
+      args: { account_id: "alice.testnet", registration_only: true },
+    });
+    expect(USDC_STORAGE_DEPOSIT_YOCTO).toBe(10_000_000_000_000_000_000_000n);
+  });
+
+  it("registers the receiver before transferring, in two separate calls", async () => {
     const { wallet, calls } = setup();
 
     await expect(
@@ -178,7 +200,22 @@ describe("USDC transfer call", () => {
       }),
     ).resolves.toEqual({ txHash: "0xfaucet", outcome: "success" });
 
+    /* Order matters: a transfer to an unregistered account panics. */
+    expect(calls.map((call) => call.method)).toEqual([
+      "storage_deposit",
+      "ft_transfer",
+    ]);
     expect(calls).toEqual([
+      {
+        accountId: FAUCET_ACCOUNT_ID,
+        contractId: "usdc-sonata.testnet",
+        method: "storage_deposit",
+        args: { account_id: "alice.testnet", registration_only: true },
+        options: {
+          deposit: USDC_STORAGE_DEPOSIT_YOCTO,
+          gas: DEFAULT_FUNCTION_CALL_GAS,
+        },
+      },
       {
         accountId: FAUCET_ACCOUNT_ID,
         contractId: "usdc-sonata.testnet",
@@ -191,6 +228,25 @@ describe("USDC transfer call", () => {
         options: { deposit: 1n, gas: FT_TRANSFER_GAS },
       },
     ]);
+  });
+
+  it("does not move funds when registration fails", async () => {
+    const { wallet, calls } = setup({
+      callError: new SonataChainError(
+        "contract-panic",
+        "The attached deposit is less than the required storage.",
+      ),
+      failAtCall: 1,
+    });
+
+    await expect(
+      wallet.transferUsdc({
+        receiverId: "alice.testnet",
+        amountUsdc: FAUCET_GRANT_USDC_MICRO,
+      }),
+    ).rejects.toBeInstanceOf(SonataChainError);
+
+    expect(calls.map((call) => call.method)).toEqual(["storage_deposit"]);
   });
 
   it("surfaces a chain failure without signing as anyone else", async () => {
@@ -207,6 +263,7 @@ describe("USDC transfer call", () => {
         amountUsdc: FAUCET_GRANT_USDC_MICRO,
       }),
     ).rejects.toBeInstanceOf(SonataChainError);
+    /* The failure happens on the first faucet-signed call (registration). */
     expect(calls).toHaveLength(1);
     expect(calls[0]?.accountId).toBe(FAUCET_ACCOUNT_ID);
   });

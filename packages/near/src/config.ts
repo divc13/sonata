@@ -89,6 +89,16 @@ export const FAUCET_GRANT_USDC_MICRO = "25000000";
 export const ONE_YOCTO = 1n;
 
 /**
+ * NEP-145 registration deposit the faucet attaches before the first transfer:
+ * `ft_transfer` panics for an account the USDC contract has not registered.
+ * 0.01 NEAR covers the contract's 120-byte storage cost
+ * (`contracts/mock-usdc/src/lib.rs`, `STORAGE_BYTES_PER_ACCOUNT`); with
+ * `registration_only: true` the contract refunds whatever exceeds the cost,
+ * and an already-registered account gets the whole deposit back.
+ */
+export const USDC_STORAGE_DEPOSIT_YOCTO = 10_000_000_000_000_000_000_000n;
+
+/**
  * Gas a wallet must attach to NEP-141 `ft_transfer_call` (pass purchase,
  * market buy). `mock-usdc` forwards 120 Tgas to the receiver's
  * `ft_on_transfer` (enough for the market's 50 + 40 Tgas subcalls) plus

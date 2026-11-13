@@ -4,8 +4,9 @@
  * These are the non-demo replacement for the role-based mutations: every input
  * names the connected account explicitly and the router never accepts a demo
  * role, a signer or a second account. Ownership is always verified against the
- * chain (`nft_token`) before Postgres is touched, and the faucet is a direct
- * `ft_transfer` from the configured faucet account with one grant per account.
+ * chain (`nft_token`) before Postgres is touched, and the faucet registers the
+ * receiver (`usdc.storage_deposit`) and then sends a direct `ft_transfer`, with
+ * one grant per account.
  *
  * Postgres stays a cache: `sync*` reads the chain first, writes only what the
  * chain already confirms, and is safe to replay.
