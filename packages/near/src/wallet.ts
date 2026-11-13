@@ -25,10 +25,12 @@ import {
 } from "./client";
 import {
   CONTRACT_IDS,
+  DEFAULT_FUNCTION_CALL_GAS,
   FAUCET_ACCOUNT_ID,
   FT_TRANSFER_GAS,
   ONE_YOCTO,
   ROYALTY_BPS,
+  USDC_STORAGE_DEPOSIT_YOCTO,
 } from "./config";
 import { SonataChainError } from "./errors";
 import { assertMicroUsdc, type PreparedCall } from "./sonata-chain";
@@ -84,6 +86,25 @@ export function getFaucetSigner(
 }
 
 /**
+ * `usdc.storage_deposit({account_id, registration_only: true})`, signed by the
+ * faucet. NEP-141 `ft_transfer` panics for an unregistered receiver, so every
+ * grant registers the wallet first. The call is idempotent: the contract
+ * refunds the attached deposit when the receiver is already registered.
+ */
+export function buildUsdcStorageDepositCall(receiverId: string): PreparedCall {
+  return {
+    contractId: CONTRACT_IDS.usdc,
+    method: "storage_deposit",
+    args: {
+      account_id: assertNearAccountId(receiverId),
+      registration_only: true,
+    },
+    deposit: USDC_STORAGE_DEPOSIT_YOCTO,
+    gas: DEFAULT_FUNCTION_CALL_GAS,
+  };
+}
+
+/**
  * `usdc.ft_transfer(receiver, amount)` with 1 yocto attached (the NEP-141
  * storage guard) and plain-transfer gas. This is a direct transfer, not an
  * `ft_transfer_call`: the faucet credits the wallet balance and the user then
@@ -124,7 +145,10 @@ export type WalletChain = {
   getNftToken(tokenId: string): Promise<Master | null>;
   /** `market.get_listing`, including inactive listings. */
   getListing(tokenId: string): Promise<Listing | null>;
-  /** Signs `ft_transfer` as the configured faucet. */
+  /**
+   * Registers the receiver (NEP-145 `storage_deposit`, 0.01 NEAR) and then
+   * signs `ft_transfer` (1 yocto) as the configured faucet, in two calls.
+   */
   transferUsdc(request: UsdcTransferRequest): Promise<ChainResult>;
 };
 
@@ -272,13 +296,32 @@ export function createSonataWallet(
     },
 
     async transferUsdc(request) {
+      const receiverId = assertNearAccountId(request.receiverId);
+      const signer = resolveFaucetSigner();
+      const account = createSignedAccount(signer.accountId, signer.secretKey);
+
+      /*
+       * 1. Register the receiver. A new wallet is unknown to the USDC
+       * contract and `ft_transfer` would panic with "The account is not
+       * registered"; the contract refunds the deposit when it already knows
+       * the account. This must land before the transfer (separate call), so a
+       * failed registration never moves funds.
+       */
+      const registration = buildUsdcStorageDepositCall(receiverId);
+      await call(
+        account,
+        registration.contractId,
+        registration.method,
+        registration.args,
+        { deposit: registration.deposit, gas: registration.gas },
+      );
+
+      /* 2. Move the grant with the NEP-141 1 yocto attached. */
       const prepared = buildUsdcTransferCall(
-        request.receiverId,
+        receiverId,
         request.amountUsdc,
         request.memo,
       );
-      const signer = resolveFaucetSigner();
-      const account = createSignedAccount(signer.accountId, signer.secretKey);
 
       return call(
         account,

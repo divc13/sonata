@@ -18,6 +18,7 @@ export {
   ROYALTY_BPS,
   SONATA_NETWORK,
   USDC_DECIMALS,
+  USDC_STORAGE_DEPOSIT_YOCTO,
 } from "./config";
 export type { SonataNetwork } from "./config";
 export {
@@ -98,6 +99,7 @@ export {
   TOKEN_ID_PATTERN,
 } from "./token-id";
 export {
+  buildUsdcStorageDepositCall,
   buildUsdcTransferCall,
   createSonataWallet,
   FAUCET_FALLBACK_SECRET_KEY_ENV,
