@@ -125,8 +125,9 @@ The demo is a hybrid, and the documentation says so:
   30-day earnings, the pass row shown in the UI, and the ownership/listing rows
   on the catalogue pages.
 - **Wallet-signed live writes:** the hosted app connects a NEAR testnet wallet
-  (MyNearWallet). The wallet buys the pass, buys a master, lists and withdraws
-  as the current owner. A one-time 25 testnet USDC faucet funds the wallet.
+  (Meteor Wallet; MyNearWallet is still listed as a legacy fallback). The wallet
+  buys the pass, buys a master, lists and withdraws as the current owner. A
+  one-time 25 testnet USDC faucet funds the wallet.
   `SONATA_DEMO_MODE=false` on the hosted deployment, so no public caller can
   act as the seeded listener, collector, Nadia or oracle. Writes are mirrored
   back into Postgres by the wallet sync procedures; see
@@ -161,9 +162,10 @@ Open <http://localhost:3000>. Local credentials: `local@example.test` /
 `LocalDev123!`.
 
 The seeded catalogue and history render without any NEAR keys. The hosted flow
-uses a connected NEAR testnet wallet (MyNearWallet) and a one-time 25 testnet
-USDC faucet. To enable the faucet locally, set `SONATA_FAUCET_SECRET_KEY` (the
-collector testnet key) and `SONATA_FAUCET_ACCOUNT_ID=collector.sonata.testnet`.
+uses a connected NEAR testnet wallet (Meteor Wallet; MyNearWallet remains a
+legacy fallback) and a one-time 25 testnet USDC faucet. To enable the faucet
+locally, set `SONATA_FAUCET_SECRET_KEY` (the collector testnet key) and
+`SONATA_FAUCET_ACCOUNT_ID=collector.sonata.testnet`.
 Never commit secrets. The old server-signed demo roles are for the recorded
 video/admin tooling only; set `SONATA_DEMO_MODE=true` locally if you need them.
 If you only need source compilation, `SKIP_ENV_VALIDATION=true` skips the env
@@ -265,11 +267,11 @@ and [`docs/SUBMISSION.md`](docs/SUBMISSION.md#known-limitations).
   negative ids (`-1`…`-8`), so a seeded row can never collide with a chain id.
   A live settlement needs a fresh chain and database, or a deliberate reset.
   `docs/DEMO.md` explains the exact command and precondition.
-- **Wallet connect is testnet-only.** The hosted app uses MyNearWallet on NEAR
-  testnet and a one-time 25 USDC faucet. The server-side demo signers remain for
-  the recorded video and oracle-only settlement, but `SONATA_DEMO_MODE=false`
-  is set on Vercel so public callers cannot use them. This is not mainnet key
-  management.
+- **Wallet connect is testnet-only.** The hosted app leads with Meteor Wallet on
+  NEAR testnet (MyNearWallet is kept as a legacy fallback) and a one-time 25
+  USDC faucet. The server-side demo signers remain for the recorded video and
+  oracle-only settlement, but `SONATA_DEMO_MODE=false` is set on Vercel so
+  public callers cannot use them. This is not mainnet key management.
 - **Publishing is not self-serve yet.** The 12 masters were minted by
   `scripts/mint-demo.sh`; the dashboard labels publishing as opening after the
   hackathon instead of showing a fake wizard.

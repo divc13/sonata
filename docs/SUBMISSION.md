@@ -58,7 +58,7 @@ What judges should try:
 
 1. Open `/` and play **Midnight Drive**. The player shows the song earning
    `$0.03/hr`; audio and covers are served from the deployment.
-2. Open `/pass`, connect **MyNearWallet** on NEAR testnet, use the one-time
+2. Open `/pass`, connect **Meteor Wallet** on NEAR testnet, use the one-time
    **25 testnet USDC faucet**, then buy the `$5 / 30 days` pass from the wallet.
 3. Open `/market`, then `/master/after-rain` and its **Chain** tab: the master is
    a 1-of-1 NFT whose keyless song account holds the balance and received the payout.
