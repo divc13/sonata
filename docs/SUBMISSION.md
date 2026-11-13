@@ -50,21 +50,27 @@ The lead owns the merge, the visibility change, and the final form.
 - Production alias: `sonata-phi-green.vercel.app`
 - Database: Neon free plan, connected through the Vercel Marketplace
 - Smoke tested: all Sonata routes `200`, tRPC reports `12` masters and `5` active
-  listings, and password login works.
+  listings, and the testnet wallet flow is enabled.
+- Public role mutations are disabled (`SONATA_DEMO_MODE=false`); old demo-role
+  calls return `403`.
 
 What judges should try:
 
 1. Open `/` and play **Midnight Drive**. The player shows the song earning
    `$0.03/hr`; audio and covers are served from the deployment.
-2. Open `/pass` and read the `$5 / 30 days` receipt (the pass is active).
-3. Open `/market`, then `/master/midnight-drive` and its **Chain** tab: the master is
+2. Open `/pass`, connect **MyNearWallet** on NEAR testnet, use the one-time
+   **25 testnet USDC faucet**, then buy the `$5 / 30 days` pass from the wallet.
+3. Open `/market`, then `/master/after-rain` and its **Chain** tab: the master is
    a 1-of-1 NFT whose keyless song account holds the balance and received the payout.
-4. Open `/audit` to see the historical epochs, the reserve context and the next real
+   The 25 USDC grant is enough for the pass plus the $20 master.
+4. Buy a master as the connected wallet, then open its **Manage** page: only that
+   wallet can withdraw or relist. Disconnect/switch wallets to see the owner gate.
+5. Open `/audit` to see the historical epochs, the reserve context and the next real
    epoch id.
-5. Sign in with the demo account to see `/library` and `/artist/dashboard`:
-   `local@example.test` / `LocalDev123!`. This account is intentionally public and
-   exists only in the demo database.
 6. Try `/search?q=midnight` for the Sonata master search.
+7. The email login (`local@example.test` / `LocalDev123!`) remains available for
+   profile/settings pages, but wallet actions use the connected NEAR testnet
+   wallet, not the email session.
 
 Notes for judges:
 
@@ -72,9 +78,8 @@ Notes for judges:
   funds and no mainnet deployment.
 - The database contains a seeded demo snapshot (8 epochs at negative ids); it is not
   a claim of live on-chain settlement. The `/audit` page labels the seeded history.
-- If the deployment is protected, the submission form carries the access
-  instructions. Otherwise the link is open and demo writes (pass purchase, master
-  sale, settlement) are expected to change testnet state.
+- The link is public. Wallet writes (pass purchase, master sale, listing,
+  withdrawal) change testnet state; settlement remains oracle-only.
 
 ## Testnet proof
 

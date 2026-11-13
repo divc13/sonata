@@ -124,10 +124,12 @@ The demo is a hybrid, and the documentation says so:
 - **Seeded in Postgres:** the eight past epochs, per-song payouts, trailing
   30-day earnings, the pass row shown in the UI, and the ownership/listing rows
   on the catalogue pages.
-- **Demo-gated live writes:** pass purchase, master purchase, listing,
-  withdrawal and settlement are real transactions when
-  `SONATA_DEMO_MODE=true` and the server-side keys are set. They are **not
-  reindexed back into Postgres** in this build; see
+- **Wallet-signed live writes:** the hosted app connects a NEAR testnet wallet
+  (MyNearWallet). The wallet buys the pass, buys a master, lists and withdraws
+  as the current owner. A one-time 25 testnet USDC faucet funds the wallet.
+  `SONATA_DEMO_MODE=false` on the hosted deployment, so no public caller can
+  act as the seeded listener, collector, Nadia or oracle. Writes are mirrored
+  back into Postgres by the wallet sync procedures; see
   [Known limitations](#known-limitations).
 
 A judge can verify the chain half without any of the app's seed data:
@@ -158,11 +160,14 @@ bun run dev
 Open <http://localhost:3000>. Local credentials: `local@example.test` /
 `LocalDev123!`.
 
-The seeded catalogue and history render without any NEAR keys. For the
-demo-gated writes, set `SONATA_DEMO_MODE=true` and the four
-`SONATA_*_SECRET_KEY` variables from `.env.example` on the server. Never commit
-them. If you only need source compilation, `SKIP_ENV_VALIDATION=true` skips the
-env schema.
+The seeded catalogue and history render without any NEAR keys. The hosted flow
+uses a connected NEAR testnet wallet (MyNearWallet) and a one-time 25 testnet
+USDC faucet. To enable the faucet locally, set `SONATA_FAUCET_SECRET_KEY` (the
+collector testnet key) and `SONATA_FAUCET_ACCOUNT_ID=collector.sonata.testnet`.
+Never commit secrets. The old server-signed demo roles are for the recorded
+video/admin tooling only; set `SONATA_DEMO_MODE=true` locally if you need them.
+If you only need source compilation, `SKIP_ENV_VALIDATION=true` skips the env
+schema.
 
 To deploy and verify the contracts:
 
@@ -260,14 +265,16 @@ and [`docs/SUBMISSION.md`](docs/SUBMISSION.md#known-limitations).
   negative ids (`-1`…`-8`), so a seeded row can never collide with a chain id.
   A live settlement needs a fresh chain and database, or a deliberate reset.
   `docs/DEMO.md` explains the exact command and precondition.
-- **Demo signers, not a browser wallet.** `SONATA_DEMO_MODE=true` lets the
-  server sign as the seeded listener, collector, nadia or oracle. There is no
-  wallet-selector connection in the browser.
-- **Publish is a UI stub.** The 12 masters were minted by
-  `scripts/mint-demo.sh`; the dashboard's "Publish a master" button has no
-  wizard yet.
-- **Some controls are presentational.** The market sort/filter pills and the
-  dashboard range pills change state only.
+- **Wallet connect is testnet-only.** The hosted app uses MyNearWallet on NEAR
+  testnet and a one-time 25 USDC faucet. The server-side demo signers remain for
+  the recorded video and oracle-only settlement, but `SONATA_DEMO_MODE=false`
+  is set on Vercel so public callers cannot use them. This is not mainnet key
+  management.
+- **Publishing is not self-serve yet.** The 12 masters were minted by
+  `scripts/mint-demo.sh`; the dashboard labels publishing as opening after the
+  hackathon instead of showing a fake wizard.
+- **The dashboard range pills are display-only.** Market sort/filter controls
+  are wired; the artist chart range selector is not.
 - **Rejected withdrawals are logged, not thrown.** The song wallet logs
   `Withdraw rejected: …` and the transaction succeeds; the UI does not parse
   the log. The demo proves the old-owner block with the log and the unchanged
