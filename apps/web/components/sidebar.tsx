@@ -27,6 +27,7 @@ import React from "react";
 import { GlassSurface } from "~/components/glass/glass-surface";
 import { Icons } from "~/components/icons";
 import { PathnameBoundary } from "~/components/pathname-boundary";
+import { WalletConnectButton } from "~/components/sonata/wallet-connect";
 import { isNavActive, libraryNav, primaryNav } from "~/config/nav";
 import type { NavItem } from "~/config/nav";
 import { siteConfig } from "~/config/site";
@@ -443,6 +444,9 @@ function SidebarContents({
     <SidebarPanel>
       <SidebarHeader className="p-2 pb-0">
         <SidebarLogo collapsed={collapsed} />
+        <div className="px-1 pt-2 group-data-[collapsible=icon]:hidden">
+          <WalletConnectButton className="w-full justify-center" />
+        </div>
       </SidebarHeader>
 
       {/* Close the mobile sheet once a link is followed. */}

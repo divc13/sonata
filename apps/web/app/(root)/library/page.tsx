@@ -1,4 +1,3 @@
-import { DEMO_ACCOUNT_IDS } from "@infinitunes/near";
 import { io } from "next/cache";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -6,12 +5,18 @@ import { Suspense } from "react";
 import { MasterCard } from "~/components/sonata/master-card";
 import { PassStatusCard } from "~/components/sonata/pass-status-card";
 import { SectionHeading } from "~/components/sonata/section-heading";
+import { WalletConnectPrompt } from "~/components/sonata/wallet-connect";
 import { pageMetadata } from "~/lib/metadata";
 import {
   buildCatalogue,
   libraryMasters,
   passStatus,
 } from "~/lib/sonata-catalog";
+import {
+  SONATA_WALLET_NETWORK_LABEL,
+  truncateAccountId,
+} from "~/lib/sonata/wallet";
+import { readWalletAccount } from "~/lib/sonata/wallet-cookie";
 import { api } from "~/lib/trpc/server";
 
 export const metadata = pageMetadata({
@@ -64,17 +69,36 @@ function LibrarySkeleton() {
 async function LibraryContent() {
   await io();
 
+  const accountId = await readWalletAccount();
+
+  if (!accountId) {
+    return (
+      <WalletConnectPrompt
+        title="Connect a NEAR testnet wallet"
+        description="Your library follows the wallet that owns the masters. Connect it to see what is yours."
+        note="Ownership is read from the testnet collection, so a master bought with this wallet appears here."
+      />
+    );
+  }
+
   const [pass, songs] = await Promise.all([
-    api.sonata.pass.byAccount({ accountId: DEMO_ACCOUNT_IDS.listener }),
+    api.sonata.pass.byAccount({ accountId }),
     api.sonata.songs.list({ limit: 100 }),
   ]);
 
   const catalogue = buildCatalogue(songs);
-  const owned = libraryMasters(catalogue);
+  const owned = libraryMasters(catalogue, [accountId]);
   const status = passStatus(pass);
 
   return (
     <div className="flex flex-col gap-8">
+      <p className="text-xs text-muted-foreground">
+        {SONATA_WALLET_NETWORK_LABEL} ·{" "}
+        <span className="font-mono" title={accountId}>
+          {truncateAccountId(accountId)}
+        </span>
+      </p>
+
       <PassStatusCard status={status} />
 
       {owned.length === 0 ? (
@@ -120,7 +144,7 @@ export default function LibraryPage() {
         </h1>
         <p className="max-w-xl text-sm leading-6 text-muted-foreground">
           Masters you own, songs you have kept, and the playlists you have
-          pressed. Signed in, this page follows you across devices.
+          pressed. The wallet you connect is the account that holds them.
         </p>
       </header>
 

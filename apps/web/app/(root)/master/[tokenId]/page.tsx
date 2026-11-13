@@ -7,16 +7,15 @@ import {
 import { formatDuration } from "@infinitunes/types";
 import { Badge } from "@infinitunes/ui/components/badge";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { cache } from "react";
+import { Suspense, cache } from "react";
 
 import { ImageWithFallback } from "~/components/image-with-fallback";
 import { CopyField } from "~/components/sonata/copy-field";
 import { EarningsBars } from "~/components/sonata/earnings-bars";
-import { MasterActions } from "~/components/sonata/master-actions";
 import { MasterHistory } from "~/components/sonata/master-history";
 import { MasterTabs } from "~/components/sonata/master-tabs";
+import { MasterWalletActions } from "~/components/sonata/master-wallet-actions";
 import { PlayMaster } from "~/components/sonata/play-master";
 import { Receipt } from "~/components/sonata/receipt";
 import { ReceiptRow } from "~/components/sonata/receipt-row";
@@ -30,8 +29,8 @@ import {
   formatUsdMicro2,
   selectListingForToken,
 } from "~/lib/sonata/market";
+import { readWalletAccount } from "~/lib/sonata/wallet-cookie";
 import { api } from "~/lib/trpc/server";
-import { asRoute } from "~/lib/utils";
 
 type MasterPageProps = { params: Promise<{ tokenId: string }> };
 
@@ -52,6 +51,32 @@ const dateFormat = new Intl.DateTimeFormat("en-US", {
 });
 
 const formatDate = (value: Date) => dateFormat.format(value);
+
+/**
+ * The wallet is request data, so it lives in its own Suspense boundary: the
+ * master record and its charts do not wait on the cookie, and the action panel
+ * streams in with the visitor's account.
+ */
+async function MasterWalletPanel({
+  tokenId,
+  ownerAccountId,
+  listingPriceUsdc,
+}: {
+  tokenId: string;
+  ownerAccountId: string;
+  listingPriceUsdc: string | null;
+}) {
+  const accountId = await readWalletAccount();
+
+  return (
+    <MasterWalletActions
+      tokenId={tokenId}
+      ownerAccountId={ownerAccountId}
+      listingPriceUsdc={listingPriceUsdc}
+      accountId={accountId}
+    />
+  );
+}
 
 export async function generateMetadata({
   params,
@@ -511,18 +536,20 @@ export default async function MasterPage({ params }: MasterPageProps) {
             </section>
           )}
 
-          <MasterActions
-            tokenId={master.tokenId}
-            ownerAccountId={master.ownerAccountId}
-            listingPriceUsdc={listing?.priceUsdc ?? null}
-          />
-
-          <Link
-            href={asRoute(`/master/${master.tokenId}/manage`)}
-            className="inline-flex w-fit items-center text-xs font-medium text-muted-foreground underline-offset-4 transition-colors duration-fast hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          <Suspense
+            fallback={
+              <div
+                aria-hidden="true"
+                className="h-36 rounded-xl border border-border/60 bg-card"
+              />
+            }
           >
-            Manage master
-          </Link>
+            <MasterWalletPanel
+              tokenId={master.tokenId}
+              ownerAccountId={master.ownerAccountId}
+              listingPriceUsdc={listing?.priceUsdc ?? null}
+            />
+          </Suspense>
 
           <section className="flex flex-col gap-2 rounded-xl border border-border/60 bg-card p-5">
             <h2 className="font-heading text-sm font-semibold tracking-[-0.01em]">

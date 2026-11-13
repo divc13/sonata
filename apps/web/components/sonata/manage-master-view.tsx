@@ -3,15 +3,14 @@ import { ArrowLeft, Lock, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 
 import { CopyField } from "~/components/sonata/copy-field";
-import { DemoViewerSwitcher } from "~/components/sonata/demo-viewer-switcher";
-import { HolderActions } from "~/components/sonata/holder-actions";
 import { Stat } from "~/components/sonata/stat";
-import type { DemoViewerAccount } from "~/lib/sonata/demo-viewer";
+import { WalletConnectPrompt } from "~/components/sonata/wallet-connect";
+import { WalletManageActions } from "~/components/sonata/wallet-manage-actions";
+import { formatIncludedBalance, formatUsdMicro2 } from "~/lib/sonata/market";
 import {
-  demoRoleForOwner,
-  formatIncludedBalance,
-  formatUsdMicro2,
-} from "~/lib/sonata/market";
+  SONATA_WALLET_NETWORK_LABEL,
+  truncateAccountId,
+} from "~/lib/sonata/wallet";
 import { asRoute } from "~/lib/utils";
 
 type ManageMasterViewProps = {
@@ -21,8 +20,8 @@ type ManageMasterViewProps = {
   artistHandle: string;
   ownerAccountId: string;
   songAccountId: string;
-  /** The demo identity the page is currently viewing as. */
-  viewerAccountId: DemoViewerAccount;
+  /** The account in the `sonata_wallet` cookie, or `null` when disconnected. */
+  walletAccountId: string | null;
   /** Result of the server-side owner check; the only thing that grants actions. */
   isOwner: boolean;
   /** Song account balance in micro-USDC, or `null` when the chain read failed. */
@@ -35,15 +34,13 @@ type ManageMasterViewProps = {
 const linkClass =
   "inline-flex w-fit items-center gap-1.5 text-xs font-medium text-muted-foreground underline-offset-4 transition-colors duration-fast hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none";
 
-const shortId = (accountId: string) =>
-  accountId.length <= 24
-    ? accountId
-    : `${accountId.slice(0, 12)}…${accountId.slice(-8)}`;
+const shortId = (accountId: string) => truncateAccountId(accountId, 10, 6);
 
 /**
- * The manage surface shared by both gate outcomes. It is presentational: the
- * page resolves the master, the cookie and the owner decision, then passes the
- * result in. Non-owners never receive the actions because `isOwner` is false.
+ * The manage surface shared by every gate outcome. It is presentational: the
+ * page resolves the master, the wallet cookie and the owner decision, then
+ * passes the result in. Non-owners never receive the actions because
+ * `isOwner` is false.
  */
 export function ManageMasterView({
   tokenId,
@@ -52,14 +49,13 @@ export function ManageMasterView({
   artistHandle,
   ownerAccountId,
   songAccountId,
-  viewerAccountId,
+  walletAccountId,
   isOwner,
   balanceUsdc,
   listingPriceUsdc,
   earnings30dUsdc,
 }: ManageMasterViewProps) {
   const masterHref = asRoute(`/master/${tokenId}`);
-  const ownerRole = demoRoleForOwner(ownerAccountId);
   const balance = formatIncludedBalance(balanceUsdc);
 
   return (
@@ -94,15 +90,23 @@ export function ManageMasterView({
             </div>
           </div>
 
-          <DemoViewerSwitcher viewerAccountId={viewerAccountId} />
           <p className="text-[0.6875rem] leading-4 text-muted-foreground">
-            This selector only changes which account the page compares. The
-            owner check always runs on the server.
+            {SONATA_WALLET_NETWORK_LABEL} ·{" "}
+            <span className="font-mono" title={walletAccountId ?? undefined}>
+              {walletAccountId ? shortId(walletAccountId) : "not connected"}
+            </span>
+            . The owner check runs on the server against the collection.
           </p>
         </div>
       </header>
 
-      {isOwner ? (
+      {!walletAccountId ? (
+        <WalletConnectPrompt
+          title="Connect to manage this master"
+          description="Withdrawals and resale are signed by the wallet that holds the master. Connect it to continue."
+          note="The public master page stays open to everyone."
+        />
+      ) : isOwner ? (
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
           <section className="flex flex-col gap-6 rounded-2xl border border-border/60 bg-card p-5 sm:p-6">
             <div className="flex items-center gap-2">
@@ -163,9 +167,11 @@ export function ManageMasterView({
           </section>
 
           <aside className="flex flex-col gap-4">
-            <HolderActions
+            <WalletManageActions
               tokenId={tokenId}
-              role={ownerRole}
+              songAccountId={songAccountId}
+              ownerAccountId={ownerAccountId}
+              accountId={walletAccountId}
               listingPriceUsdc={listingPriceUsdc}
             />
 
@@ -197,19 +203,18 @@ export function ManageMasterView({
               Only the current owner can manage this master
             </h2>
             <p className="text-sm leading-6 text-muted-foreground">
-              You are viewing as{" "}
+              Your wallet{" "}
               <span className="font-mono text-xs">
-                {shortId(viewerAccountId)}
-              </span>
-              . This master is held by{" "}
+                {shortId(walletAccountId)}
+              </span>{" "}
+              does not hold this master. It is held by{" "}
               <span className="font-mono text-xs">
                 {shortId(ownerAccountId)}
               </span>
               . Earnings, resale and ownership controls stay hidden.
             </p>
             <p className="text-xs leading-5 text-muted-foreground">
-              Switch the viewer above to see the holder view. The public master
-              page stays open to everyone.
+              The public master page stays open to everyone.
             </p>
           </div>
           <Link href={masterHref} className={linkClass}>

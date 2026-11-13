@@ -7,6 +7,7 @@ import { cn } from "~/lib/utils";
 import { SearchMenu } from "../search/search-menu";
 import { TopSearch } from "../search/top-search";
 import { AppSidebarTrigger } from "../sidebar";
+import { WalletConnectButton } from "../sonata/wallet-connect";
 import { ViewerSignedOut, ViewerUserMenu } from "../viewer";
 import { LanguagePicker } from "./language-picker";
 import { MainNav } from "./main-nav";
@@ -34,6 +35,8 @@ export function Navbar() {
       <div data-toolbar-title className="min-w-0 flex-1" />
 
       <div className="flex items-center justify-end gap-1 md:gap-2">
+        <WalletConnectButton className="hidden md:inline-flex" />
+
         <GlassSurface size="s" glassRole="toolbar" className={capsuleClassName}>
           <SearchMenu topSearch={<TopSearch />} />
         </GlassSurface>
