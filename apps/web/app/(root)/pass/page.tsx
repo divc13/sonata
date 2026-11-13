@@ -1,13 +1,11 @@
-import {
-  DEMO_ACCOUNT_IDS,
-  PASS_DURATION_SEC,
-  PASS_PRICE_USDC_MICRO,
-} from "@infinitunes/near";
+import { PASS_DURATION_SEC, PASS_PRICE_USDC_MICRO } from "@infinitunes/near";
+import type { SonataOverview, SonataPassCache } from "@infinitunes/types";
 import { Check } from "lucide-react";
 import Link from "next/link";
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 
-import { PassBuyAction } from "~/components/sonata/pass-buy-action";
+import { PassWalletCheckout } from "~/components/sonata/pass-wallet-checkout";
+import { WalletConnectPrompt } from "~/components/sonata/wallet-connect";
 import { pageMetadata } from "~/lib/metadata";
 import {
   formatMicroUsd,
@@ -19,6 +17,7 @@ import {
   shortHash,
 } from "~/lib/sonata-display";
 import { formatUsdMicro2 } from "~/lib/sonata/market";
+import { readWalletAccount } from "~/lib/sonata/wallet-cookie";
 import { api } from "~/lib/trpc/server";
 import { asRoute, cn } from "~/lib/utils";
 
@@ -30,7 +29,6 @@ export const metadata = pageMetadata({
 
 const PASS_DAYS = PASS_DURATION_SEC / 86_400;
 const PASS_PRICE_LABEL = formatMicroUsd(PASS_PRICE_USDC_MICRO);
-const DEMO_LISTENER = DEMO_ACCOUNT_IDS.listener;
 
 /**
  * The pass row is fetched per request, so its status is read against the
@@ -64,199 +62,261 @@ const comparison = [
   },
 ];
 
+/** `usdc.ft_balance_of` for the connected wallet; a failed read is `null`. */
+async function readWalletBalance(accountId: string): Promise<string | null> {
+  try {
+    return await api.sonata.wallet.balance({ accountId });
+  } catch {
+    return null;
+  }
+}
+
+function PassStatusSection({
+  pass,
+  now,
+}: {
+  pass: SonataPassCache | null;
+  now: Date;
+}) {
+  const status = passStatus(pass, now);
+  const active = status === "active";
+  const daysLeft = pass ? passDaysRemaining(pass.expiresAt, now) : 0;
+
+  return (
+    <section
+      aria-label="Pass status"
+      className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-card p-5 sm:p-6"
+    >
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <span
+          className={cn(
+            "inline-flex rounded-full border border-border/60 px-2 py-0.5 text-[0.6875rem] font-semibold tracking-wide uppercase",
+            active ? "border-primary/40 text-primary" : "text-muted-foreground",
+          )}
+        >
+          {passStatusLabel(status)}
+        </span>
+        {active ? (
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {daysLeft} {daysLeft === 1 ? "day" : "days"} left
+          </span>
+        ) : null}
+      </div>
+
+      {active && pass ? (
+        <>
+          <h2 className="font-heading text-xl leading-7 font-bold tracking-[-0.015em]">
+            Active until {formatPassDate(pass.expiresAt)}
+          </h2>
+          <p className="text-sm leading-6 text-muted-foreground">
+            Every master plays in full, and every verified hour pays the artist.
+          </p>
+          <p className="font-mono text-[0.6875rem] leading-5 text-muted-foreground">
+            Receipt · {formatMicroUsd(pass.priceUsdc)} ·{" "}
+            {formatPassDate(pass.createdAt)}
+            {pass.txHash ? (
+              <>
+                {" "}
+                · tx <span title={pass.txHash}>{shortHash(pass.txHash)}</span>
+              </>
+            ) : null}
+          </p>
+        </>
+      ) : (
+        <>
+          <h2 className="font-heading text-xl leading-7 font-bold tracking-[-0.015em]">
+            {status === "expired" && pass
+              ? `Your pass ended ${formatPassDate(pass.expiresAt)}`
+              : "Thirty-second previews, on the house"}
+          </h2>
+          <p className="text-sm leading-6 text-muted-foreground">
+            Free listening gives you 30 seconds of every master. The pass opens
+            the whole recording and turns your hours into artist earnings.
+          </p>
+        </>
+      )}
+    </section>
+  );
+}
+
+function PassPriceSection({ children }: { children: ReactNode }) {
+  const dailyCents = passDailyPriceCents(PASS_PRICE_USDC_MICRO, PASS_DAYS);
+
+  return (
+    <section
+      aria-labelledby="pass-price-title"
+      className="flex flex-col gap-5 rounded-2xl border border-border/60 bg-card p-6 sm:p-8"
+    >
+      <div className="flex flex-col gap-1.5">
+        <h2 id="pass-price-title" className="sr-only">
+          The pass price
+        </h2>
+        <div className="flex items-baseline gap-2">
+          <span className="font-heading text-5xl leading-none font-bold tracking-[-0.03em] tabular-nums">
+            {PASS_PRICE_LABEL}
+          </span>
+          <span className="text-sm text-muted-foreground">
+            / {PASS_DAYS} days
+          </span>
+        </div>
+        <p className="text-sm leading-6 text-muted-foreground">
+          One payment of {PASS_PRICE_LABEL} covers the full {PASS_DAYS} days —
+          about {dailyCents}¢ a day.
+        </p>
+      </div>
+
+      <dl className="grid grid-cols-3 gap-3 rounded-xl border border-border/60 bg-fill/40 px-4 py-3 text-sm">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <dt className="text-xs text-muted-foreground">You pay</dt>
+          <dd className="font-semibold tabular-nums">{PASS_PRICE_LABEL}</dd>
+        </div>
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <dt className="text-xs text-muted-foreground">You get</dt>
+          <dd className="font-semibold tabular-nums">{PASS_DAYS} days</dd>
+        </div>
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <dt className="text-xs text-muted-foreground">Works out to</dt>
+          <dd className="font-semibold tabular-nums">{dailyCents}¢ / day</dd>
+        </div>
+      </dl>
+
+      <ul className="flex flex-col gap-2.5 border-y border-border/60 py-5">
+        {included.map((item) => (
+          <li key={item} className="flex items-start gap-2.5 text-sm">
+            <Check
+              aria-hidden="true"
+              className="mt-0.5 size-4 shrink-0 text-primary"
+            />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+
+      {children}
+    </section>
+  );
+}
+
+function PassComparison() {
+  return (
+    <section
+      aria-labelledby="pass-compare-title"
+      className="flex flex-col gap-4"
+    >
+      <div className="flex flex-col gap-1">
+        <h2
+          id="pass-compare-title"
+          className="font-heading text-lg font-bold tracking-[-0.015em]"
+        >
+          Free preview vs the pass
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          The free tier is a look. The pass is the whole record.
+        </p>
+      </div>
+
+      <div className="overflow-hidden rounded-xl border border-border/60 bg-card">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-border/60 text-left text-xs font-medium text-muted-foreground">
+              <th scope="col" className="px-4 py-3 font-medium">
+                What you get
+              </th>
+              <th scope="col" className="px-4 py-3 text-right font-medium">
+                Free
+              </th>
+              <th scope="col" className="px-4 py-3 text-right font-medium">
+                Pass
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border/60">
+            {comparison.map((row) => (
+              <tr key={row.label}>
+                <th
+                  scope="row"
+                  className="px-4 py-3 text-left font-medium text-foreground"
+                >
+                  {row.label}
+                </th>
+                <td className="px-4 py-3 text-right text-muted-foreground">
+                  {row.free}
+                </td>
+                <td className="px-4 py-3 text-right font-medium">{row.pass}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function PassOverview({ overview }: { overview: SonataOverview }) {
+  return (
+    <div className="flex flex-col gap-2 border-t border-border/60 pt-6 text-xs leading-5 text-muted-foreground">
+      <p>
+        {overview.songsCount.toLocaleString("en-US")} masters in the catalogue ·{" "}
+        {formatUsdMicro2(overview.totalPaidUsdc)} paid to song accounts so far.
+      </p>
+      <p>
+        Hours are verified and capped at four per day. Owner and creator listens
+        do not earn.
+      </p>
+    </div>
+  );
+}
+
 async function PassContent() {
-  const [pass, overview] = await Promise.all([
-    api.sonata.pass.byAccount({ accountId: DEMO_LISTENER }),
-    api.sonata.stats.overview(),
+  const accountId = await readWalletAccount();
+  const overview = await api.sonata.stats.overview();
+
+  if (!accountId) {
+    return (
+      <>
+        <WalletConnectPrompt
+          title="Connect a NEAR testnet wallet"
+          description="Connect your wallet to buy the pass, check your USDC and keep the pass across visits. No email sign-in is needed."
+          note="Testnet only. The faucet sends 25 USDC once per wallet, enough for the $5 pass."
+        />
+        <PassPriceSection>
+          <p className="text-center text-xs leading-5 text-muted-foreground">
+            Testnet checkout · connect a wallet above to pay with testnet USDC.
+          </p>
+        </PassPriceSection>
+        <PassComparison />
+        <PassOverview overview={overview} />
+      </>
+    );
+  }
+
+  const [pass, balance] = await Promise.all([
+    api.sonata.pass.byAccount({ accountId }),
+    readWalletBalance(accountId),
   ]);
 
   const now = requestNow();
   const status = passStatus(pass, now);
-  const active = status === "active";
-  const daysLeft = pass ? passDaysRemaining(pass.expiresAt, now) : 0;
-  const dailyCents = passDailyPriceCents(PASS_PRICE_USDC_MICRO, PASS_DAYS);
 
   return (
     <>
-      <section
-        aria-label="Pass status"
-        className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-card p-5 sm:p-6"
-      >
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <span
-            className={cn(
-              "inline-flex rounded-full border border-border/60 px-2 py-0.5 text-[0.6875rem] font-semibold tracking-wide uppercase",
-              active
-                ? "border-primary/40 text-primary"
-                : "text-muted-foreground",
-            )}
-          >
-            {passStatusLabel(status)}
-          </span>
-          {active ? (
-            <span className="text-xs text-muted-foreground tabular-nums">
-              {daysLeft} {daysLeft === 1 ? "day" : "days"} left
-            </span>
-          ) : null}
-        </div>
+      <PassStatusSection pass={pass} now={now} />
 
-        {active && pass ? (
-          <>
-            <h2 className="font-heading text-xl leading-7 font-bold tracking-[-0.015em]">
-              Active until {formatPassDate(pass.expiresAt)}
-            </h2>
-            <p className="text-sm leading-6 text-muted-foreground">
-              Every master plays in full, and every verified hour pays the
-              artist.
-            </p>
-            <p className="font-mono text-[0.6875rem] leading-5 text-muted-foreground">
-              Receipt · {formatMicroUsd(pass.priceUsdc)} ·{" "}
-              {formatPassDate(pass.createdAt)}
-              {pass.txHash ? (
-                <>
-                  {" "}
-                  · tx <span title={pass.txHash}>{shortHash(pass.txHash)}</span>
-                </>
-              ) : null}
-            </p>
-          </>
-        ) : (
-          <>
-            <h2 className="font-heading text-xl leading-7 font-bold tracking-[-0.015em]">
-              {status === "expired" && pass
-                ? `Your pass ended ${formatPassDate(pass.expiresAt)}`
-                : "Thirty-second previews, on the house"}
-            </h2>
-            <p className="text-sm leading-6 text-muted-foreground">
-              Free listening gives you 30 seconds of every master. The pass
-              opens the whole recording and turns your hours into artist
-              earnings.
-            </p>
-          </>
-        )}
-      </section>
-
-      <section
-        aria-labelledby="pass-price-title"
-        className="flex flex-col gap-5 rounded-2xl border border-border/60 bg-card p-6 sm:p-8"
-      >
-        <div className="flex flex-col gap-1.5">
-          <h2 id="pass-price-title" className="sr-only">
-            The pass price
-          </h2>
-          <div className="flex items-baseline gap-2">
-            <span className="font-heading text-5xl leading-none font-bold tracking-[-0.03em] tabular-nums">
-              {PASS_PRICE_LABEL}
-            </span>
-            <span className="text-sm text-muted-foreground">
-              / {PASS_DAYS} days
-            </span>
-          </div>
-          <p className="text-sm leading-6 text-muted-foreground">
-            One payment of {PASS_PRICE_LABEL} covers the full {PASS_DAYS} days —
-            about {dailyCents}¢ a day.
-          </p>
-        </div>
-
-        <dl className="grid grid-cols-3 gap-3 rounded-xl border border-border/60 bg-fill/40 px-4 py-3 text-sm">
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <dt className="text-xs text-muted-foreground">You pay</dt>
-            <dd className="font-semibold tabular-nums">{PASS_PRICE_LABEL}</dd>
-          </div>
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <dt className="text-xs text-muted-foreground">You get</dt>
-            <dd className="font-semibold tabular-nums">{PASS_DAYS} days</dd>
-          </div>
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <dt className="text-xs text-muted-foreground">Works out to</dt>
-            <dd className="font-semibold tabular-nums">{dailyCents}¢ / day</dd>
-          </div>
-        </dl>
-
-        <ul className="flex flex-col gap-2.5 border-y border-border/60 py-5">
-          {included.map((item) => (
-            <li key={item} className="flex items-start gap-2.5 text-sm">
-              <Check
-                aria-hidden="true"
-                className="mt-0.5 size-4 shrink-0 text-primary"
-              />
-              <span>{item}</span>
-            </li>
-          ))}
-        </ul>
-
-        <PassBuyAction active={active} />
+      <PassPriceSection>
+        <PassWalletCheckout
+          accountId={accountId}
+          initialBalanceUsdc={balance}
+          active={status === "active"}
+        />
         <p className="text-center text-xs leading-5 text-muted-foreground">
-          {active
+          {status === "active"
             ? "Your pass is active. Listening now counts toward artist payouts."
-            : `Testnet checkout · ${DEMO_LISTENER} · no card charged.`}
+            : "Testnet checkout · paid from your wallet · no card charged."}
         </p>
-      </section>
+      </PassPriceSection>
 
-      <section
-        aria-labelledby="pass-compare-title"
-        className="flex flex-col gap-4"
-      >
-        <div className="flex flex-col gap-1">
-          <h2
-            id="pass-compare-title"
-            className="font-heading text-lg font-bold tracking-[-0.015em]"
-          >
-            Free preview vs the pass
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            The free tier is a look. The pass is the whole record.
-          </p>
-        </div>
-
-        <div className="overflow-hidden rounded-xl border border-border/60 bg-card">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-border/60 text-left text-xs font-medium text-muted-foreground">
-                <th scope="col" className="px-4 py-3 font-medium">
-                  What you get
-                </th>
-                <th scope="col" className="px-4 py-3 text-right font-medium">
-                  Free
-                </th>
-                <th scope="col" className="px-4 py-3 text-right font-medium">
-                  Pass
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/60">
-              {comparison.map((row) => (
-                <tr key={row.label}>
-                  <th
-                    scope="row"
-                    className="px-4 py-3 text-left font-medium text-foreground"
-                  >
-                    {row.label}
-                  </th>
-                  <td className="px-4 py-3 text-right text-muted-foreground">
-                    {row.free}
-                  </td>
-                  <td className="px-4 py-3 text-right font-medium">
-                    {row.pass}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <div className="flex flex-col gap-2 border-t border-border/60 pt-6 text-xs leading-5 text-muted-foreground">
-        <p>
-          {overview.songsCount.toLocaleString("en-US")} masters in the catalogue
-          · {formatUsdMicro2(overview.totalPaidUsdc)} paid to song accounts so
-          far.
-        </p>
-        <p>
-          Hours are verified and capped at four per day. Owner and creator
-          listens do not earn.
-        </p>
-      </div>
+      <PassComparison />
+      <PassOverview overview={overview} />
     </>
   );
 }

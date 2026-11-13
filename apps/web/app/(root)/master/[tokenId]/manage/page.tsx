@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { Suspense, cache } from "react";
 
@@ -7,12 +6,9 @@ import { ManageMasterView } from "~/components/sonata/manage-master-view";
 import { getErrorCode } from "~/lib/error-code";
 import { noindexMetadata } from "~/lib/metadata";
 import { readSongAccountBalance } from "~/lib/sonata/balances";
-import {
-  resolveDemoViewerAccount,
-  SONATA_DEMO_VIEWER_COOKIE,
-} from "~/lib/sonata/demo-viewer";
 import { canManageMaster } from "~/lib/sonata/manage-access";
 import { selectListingForToken } from "~/lib/sonata/market";
+import { readWalletAccount } from "~/lib/sonata/wallet-cookie";
 import { api } from "~/lib/trpc/server";
 
 type ManagePageProps = { params: Promise<{ tokenId: string }> };
@@ -53,25 +49,22 @@ function ManageSkeleton() {
 }
 
 /**
- * Reads the owner record and the demo viewer cookie, then lets the shared view
+ * Reads the owner record and the connected wallet, then lets the shared view
  * decide what can be shown. Only `canManageMaster` can grant the actions; the
- * demo control merely changes which account is compared.
+ * wallet cookie merely supplies the account being compared.
  */
 async function ManageBody({ params }: ManagePageProps) {
   const { tokenId } = await params;
-  const [master, listingRow, cookieStore] = await Promise.all([
+  const [master, listingRow, walletAccountId] = await Promise.all([
     getMaster(tokenId),
     api.sonata.market.listingByToken({ tokenId }),
-    cookies(),
+    readWalletAccount(),
   ]);
 
   if (!master) notFound();
 
   const balanceUsdc = await readSongAccountBalance(master.subAccount);
   const listing = selectListingForToken(listingRow, master.tokenId);
-  const viewerAccountId = resolveDemoViewerAccount(
-    cookieStore.get(SONATA_DEMO_VIEWER_COOKIE)?.value,
-  );
 
   return (
     <ManageMasterView
@@ -81,8 +74,8 @@ async function ManageBody({ params }: ManagePageProps) {
       artistHandle={master.artistHandle}
       ownerAccountId={master.ownerAccountId}
       songAccountId={master.subAccount}
-      viewerAccountId={viewerAccountId}
-      isOwner={canManageMaster(viewerAccountId, master.ownerAccountId)}
+      walletAccountId={walletAccountId}
+      isOwner={canManageMaster(walletAccountId ?? "", master.ownerAccountId)}
       balanceUsdc={balanceUsdc}
       listingPriceUsdc={listing?.priceUsdc ?? null}
       earnings30dUsdc={master.earnings30dUsdc}
@@ -92,8 +85,8 @@ async function ManageBody({ params }: ManagePageProps) {
 
 /**
  * `/master/[tokenId]/manage` — holder-only. The public master page stays open;
- * this route renders an explanation instead of the actions for anyone whose
- * demo identity is not the current owner.
+ * this route renders a connect prompt or an explanation for anyone whose
+ * connected wallet is not the current owner.
  */
 export default function ManageMasterPage({ params }: ManagePageProps) {
   return (

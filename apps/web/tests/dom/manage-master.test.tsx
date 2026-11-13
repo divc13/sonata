@@ -1,23 +1,51 @@
-import { describe, expect, it, mock } from "bun:test";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 
 import { renderToStaticMarkup } from "react-dom/server";
 
 mock.module("next/navigation", () => ({
   useRouter: () => ({ refresh: () => {} }),
 }));
-mock.module("~/lib/sonata/demo-viewer-actions", () => ({
-  selectDemoViewer: async () => {},
-}));
 mock.module("~/lib/trpc/vanilla", () => ({
   trpc: {
     sonata: {
-      songs: { withdraw: { mutate: async () => ({ txHash: "0x1" }) } },
-      market: { list: { mutate: async () => ({ txHash: "0x2" }) } },
+      wallet: {
+        syncListing: { mutate: async () => ({}) },
+      },
     },
   },
 }));
 mock.module("sonner", () => ({
   toast: { success: () => {}, error: () => {} },
+}));
+
+type WalletState = {
+  accountId: string | null;
+  shortAccount: string | null;
+  balanceUsdc: string | null;
+  balanceLabel: string;
+  connecting: boolean;
+  signing: boolean;
+  connect: () => Promise<void>;
+  disconnect: () => Promise<void>;
+  refreshBalance: () => Promise<void>;
+  sign: () => Promise<void>;
+};
+
+const wallet: WalletState = {
+  accountId: null,
+  shortAccount: null,
+  balanceUsdc: null,
+  balanceLabel: "—",
+  connecting: false,
+  signing: false,
+  connect: async () => {},
+  disconnect: async () => {},
+  refreshBalance: async () => {},
+  sign: async () => {},
+};
+
+mock.module("../../components/sonata/wallet-provider", () => ({
+  useWallet: () => wallet,
 }));
 
 const { ManageMasterView } =
@@ -35,28 +63,57 @@ const base = {
   earnings30dUsdc: "128400123",
 };
 
+function connected(accountId: string) {
+  wallet.accountId = accountId;
+  wallet.shortAccount = accountId;
+}
+
+beforeEach(() => {
+  wallet.accountId = null;
+  wallet.shortAccount = null;
+});
+
 describe("manage master view", () => {
-  it("blocks anyone who is not the current owner", () => {
+  it("asks a disconnected visitor to connect instead of showing the gate", () => {
+    const html = renderToStaticMarkup(
+      <ManageMasterView {...base} walletAccountId={null} isOwner={false} />,
+    );
+
+    expect(html).toContain("Connect to manage this master");
+    expect(html).toContain("Testnet wallet");
+    expect(html).toContain("not connected");
+    expect(html).not.toContain("Withdraw earnings");
+    expect(html).not.toContain("Only the current owner can manage");
+    expect(html).toContain('href="/master/midnight-drive"');
+  });
+
+  it("blocks a wallet that is not the current owner", () => {
+    connected("collector.sonata.testnet");
+
     const html = renderToStaticMarkup(
       <ManageMasterView
         {...base}
-        viewerAccountId="collector.sonata.testnet"
+        walletAccountId="collector.sonata.testnet"
         isOwner={false}
       />,
     );
 
     expect(html).toContain("Only the current owner can manage this master");
     expect(html).toContain("Viewing only");
+    expect(html).toContain("collector.sonata.testnet");
     expect(html).not.toContain("Withdraw earnings");
     expect(html).not.toContain("List for resale");
+    expect(html).not.toContain("Connect to manage this master");
     expect(html).toContain('href="/master/midnight-drive"');
   });
 
   it("shows the holder view with withdraw and resale actions", () => {
+    connected("nadia-sonata.testnet");
+
     const html = renderToStaticMarkup(
       <ManageMasterView
         {...base}
-        viewerAccountId="nadia-sonata.testnet"
+        walletAccountId="nadia-sonata.testnet"
         isOwner
       />,
     );
@@ -72,10 +129,12 @@ describe("manage master view", () => {
   });
 
   it("reports an existing listing instead of offering another one", () => {
+    connected("nadia-sonata.testnet");
+
     const html = renderToStaticMarkup(
       <ManageMasterView
         {...base}
-        viewerAccountId="nadia-sonata.testnet"
+        walletAccountId="nadia-sonata.testnet"
         isOwner
         listingPriceUsdc="50000000"
       />,
@@ -85,33 +144,18 @@ describe("manage master view", () => {
     expect(html).not.toContain("List for resale");
   });
 
-  it("explains the missing signer instead of rendering dead holder buttons", () => {
+  it("never renders the demo viewer switcher", () => {
+    connected("collector.sonata.testnet");
+
     const html = renderToStaticMarkup(
       <ManageMasterView
         {...base}
-        ownerAccountId="kofi-sonata.testnet"
-        viewerAccountId="nadia-sonata.testnet"
-        isOwner
-      />,
-    );
-
-    expect(html).toContain("No testnet signer is configured");
-    expect(html).not.toContain("Withdraw earnings");
-  });
-
-  it("always renders the viewer switcher", () => {
-    const html = renderToStaticMarkup(
-      <ManageMasterView
-        {...base}
-        viewerAccountId="listener.sonata.testnet"
+        walletAccountId="collector.sonata.testnet"
         isOwner={false}
       />,
     );
 
-    expect(html).toContain("View as");
-    expect(html).toContain("Nadia");
-    expect(html).toContain("Collector");
-    expect(html).toContain("Listener");
-    expect(html).toContain("owner check");
+    expect(html).not.toContain("View as");
+    expect(html).not.toContain("demo");
   });
 });

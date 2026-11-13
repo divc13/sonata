@@ -19,6 +19,8 @@ mock.module("next/navigation", () => ({
   useSelectedLayoutSegments: () => [],
 }));
 const { AppSidebarProvider } = await import("../../components/sidebar");
+const { WalletProvider } =
+  await import("../../components/sonata/wallet-provider");
 const { ViewerProvider, ViewerSidebar, ViewerSignedOut, ViewerMobileNav } =
   await import("../../components/viewer");
 
@@ -40,7 +42,7 @@ async function mount(ui: React.ReactNode) {
   await act(async () => {
     root.render(
       <AppRouterContext.Provider value={router}>
-        {ui}
+        <WalletProvider>{ui}</WalletProvider>
       </AppRouterContext.Provider>,
     );
   });
