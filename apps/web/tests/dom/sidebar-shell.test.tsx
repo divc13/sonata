@@ -14,6 +14,7 @@ import {
 } from "../../components/sidebar";
 import { MobileNav } from "../../components/site-header/mobile-nav";
 import { Toolbar } from "../../components/site-header/toolbar";
+import { WalletProvider } from "../../components/sonata/wallet-provider";
 import type { User } from "../../lib/auth";
 
 const router = {} as never;
@@ -35,7 +36,7 @@ async function mount(ui: React.ReactNode, pathname: string | null = null) {
     root.render(
       <AppRouterContext.Provider value={router}>
         <PathnameContext.Provider value={pathname}>
-          {ui}
+          <WalletProvider>{ui}</WalletProvider>
         </PathnameContext.Provider>
       </AppRouterContext.Provider>,
     );

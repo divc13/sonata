@@ -20,6 +20,8 @@ mock.module("next/navigation", () => ({
 }));
 const { AppSidebarProvider, Sidebar } =
   await import("../../components/sidebar");
+const { WalletProvider } =
+  await import("../../components/sonata/wallet-provider");
 const { AddToPlaylistDialog } =
   await import("../../components/playlist/add-to-playlist-dialog");
 
@@ -42,7 +44,7 @@ async function mount(ui: React.ReactNode) {
   await act(async () => {
     root.render(
       <AppRouterContext.Provider value={router}>
-        {ui}
+        <WalletProvider>{ui}</WalletProvider>
       </AppRouterContext.Provider>,
     );
   });
