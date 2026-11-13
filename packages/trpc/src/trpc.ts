@@ -1,6 +1,6 @@
 import type { Auth } from "@infinitunes/auth";
 import type { DbClient } from "@infinitunes/db/client";
-import type { SonataChain } from "@infinitunes/near";
+import type { SonataChain, WalletChain } from "@infinitunes/near";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 
@@ -26,6 +26,12 @@ export type TRPCContext = {
    * the sonata router uses the process-wide demo chain; tests inject a fake.
    */
   sonataChain?: SonataChain;
+  /**
+   * Optional public-wallet client override (view reads + the USDC faucet).
+   * The web adapter leaves this undefined so the sonata router uses the
+   * process-wide testnet `sonataWallet`; tests inject a fake.
+   */
+  sonataWallet?: WalletChain;
   /**
    * Listen ingest + epoch settlement service. The web adapter injects the
    * server-only implementation; tests inject a fake.

@@ -4,7 +4,10 @@ export {
   DAILY_CAP_SEC,
   DEFAULT_FUNCTION_CALL_GAS,
   DEMO_ACCOUNT_IDS,
+  FAUCET_ACCOUNT_ID,
+  FAUCET_GRANT_USDC_MICRO,
   FT_TRANSFER_CALL_GAS,
+  FT_TRANSFER_GAS,
   LISTING_STORAGE_YOCTO,
   NEAR_RPC_URL,
   ONE_YOCTO,
@@ -17,6 +20,11 @@ export {
   USDC_DECIMALS,
 } from "./config";
 export type { SonataNetwork } from "./config";
+export {
+  assertNearAccountId,
+  isValidNearAccountId,
+  NEAR_ACCOUNT_ID_PATTERN,
+} from "./account-id";
 export {
   callFunction,
   createSignedAccount,
@@ -89,16 +97,37 @@ export {
   songAccountId,
   TOKEN_ID_PATTERN,
 } from "./token-id";
+export {
+  buildUsdcTransferCall,
+  createSonataWallet,
+  FAUCET_FALLBACK_SECRET_KEY_ENV,
+  FAUCET_SECRET_KEY_ENV,
+  getFaucetSigner,
+  marketListing,
+  nftToken,
+  sonataWallet,
+  transferUsdc,
+} from "./wallet";
+export type {
+  FaucetSigner,
+  UsdcTransferRequest,
+  WalletChain,
+  WalletChainDependencies,
+} from "./wallet";
 export type { Master, Epoch, Listing, Pass, PayoutEntry } from "./types";
 export type {
   SonataArtist,
   SonataEpochDetail,
   SonataEpochSummary,
+  SonataListingRow,
   SonataListingWithSong,
   SonataMasterDetail,
   SonataOverview,
+  SonataOwnershipRow,
   SonataPassCache,
   SonataPayoutRow,
+  SonataPurchaseSync,
   SonataSong,
   SonataSongWithEarnings,
+  SonataWalletGrant,
 } from "./types";

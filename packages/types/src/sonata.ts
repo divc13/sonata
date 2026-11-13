@@ -137,3 +137,18 @@ export type SonataOverview = {
   activeListings: number;
   songsCount: number;
 };
+
+/** Result of `wallet.faucet`: the landed grant and its micro-USDC amount. */
+export type SonataWalletGrant = {
+  txHash: string;
+  amountUsdc: string;
+};
+
+/**
+ * Result of `wallet.syncPurchase`: the master cache row after the sale and the
+ * listing it closed (`null` when the master never had a cached listing).
+ */
+export type SonataPurchaseSync = {
+  song: SonataSong;
+  listing: SonataListingRow | null;
+};
