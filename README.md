@@ -28,16 +28,16 @@ with the recording.
 
 ## How it works
 
-| Piece | How it works |
-| --- | --- |
-| **Master** | One song, one 1-of-1 NFT. No fractions, no editions. |
-| **Song account** | Each master owns `<slug>.masters-sonata.testnet`, a NEAR account with **zero access keys**. |
-| **Pass** | $5.00 for 30 days of full playback. A non-transferable NFT. The free tier is a 30-second preview. |
-| **Earnings** | $0.03 per verified listening hour, paid in mock USDC directly to the song account. |
-| **Cap** | 4 verified hours per listener per day, across all songs. Owner and creator listens do not earn. |
-| **Withdrawal** | Only the current master owner can withdraw. The check is on chain at withdrawal time. |
-| **Resale** | Fixed price. 5% to the creator, the rest to the seller. The account and its balance move with the master. |
-| **Reserve** | 3-month target, 1-month hard floor. The platform cannot withdraw below it. |
+| Piece            | How it works                                                                                              |
+| ---------------- | --------------------------------------------------------------------------------------------------------- |
+| **Master**       | One song, one 1-of-1 NFT. No fractions, no editions.                                                      |
+| **Song account** | Each master owns `<slug>.masters-sonata.testnet`, a NEAR account with **zero access keys**.               |
+| **Pass**         | $5.00 for 30 days of full playback. A non-transferable NFT. The free tier is a 30-second preview.         |
+| **Earnings**     | $0.03 per verified listening hour, paid in mock USDC directly to the song account.                        |
+| **Cap**          | 4 verified hours per listener per day, across all songs. Owner and creator listens do not earn.           |
+| **Withdrawal**   | Only the current master owner can withdraw. The check is on chain at withdrawal time.                     |
+| **Resale**       | Fixed price. 5% to the creator, the rest to the seller. The account and its balance move with the master. |
+| **Reserve**      | 3-month target, 1-month hard floor. The platform cannot withdraw below it.                                |
 
 The key property: the song account has no keys. It can only pay the current
 owner of the master, checked on chain at withdrawal time. A seller cannot keep
@@ -77,19 +77,19 @@ boundaries are in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Live on NEAR testnet
 
-| Role | Account |
-| --- | --- |
-| Parent / faucet / contract owner | `sonata.testnet` |
-| Master NFT collection | `masters-sonata.testnet` |
-| Platform / settlement | `platform-sonata.testnet` |
-| Market | `market-sonata.testnet` |
-| Mock USDC (NEP-141) | `usdc-sonata.testnet` |
-| Listen oracle | `oracle-sonata.testnet` |
-| Artist, Nadia Vale | `nadia-sonata.testnet` |
-| Artist, Kofi Mensah | `kofi-sonata.testnet` |
-| Artist, Lena Ortiz | `lena-sonata.testnet` |
-| Listener | `listener.sonata.testnet` |
-| Collector | `collector.sonata.testnet` |
+| Role                             | Account                    |
+| -------------------------------- | -------------------------- |
+| Parent / faucet / contract owner | `sonata.testnet`           |
+| Master NFT collection            | `masters-sonata.testnet`   |
+| Platform / settlement            | `platform-sonata.testnet`  |
+| Market                           | `market-sonata.testnet`    |
+| Mock USDC (NEP-141)              | `usdc-sonata.testnet`      |
+| Listen oracle                    | `oracle-sonata.testnet`    |
+| Artist, Nadia Vale               | `nadia-sonata.testnet`     |
+| Artist, Kofi Mensah              | `kofi-sonata.testnet`      |
+| Artist, Lena Ortiz               | `lena-sonata.testnet`      |
+| Listener                         | `listener.sonata.testnet`  |
+| Collector                        | `collector.sonata.testnet` |
 
 Song accounts are `<token-id>.masters-sonata.testnet`, for example
 `midnight-drive.masters-sonata.testnet`. Each one has zero access keys and the
@@ -114,8 +114,8 @@ song accounts match. It needs no keychain and no write access.
 - **3-minute script:** [`docs/DEMO.md`](docs/DEMO.md) — timed routes, clicks,
   voiceover, terminal proofs and the seeded/live split.
 - **Repository:** <https://github.com/divc13/sonata> (public at submission).
-- **Demo video:** `<demo-video-url>` (to be published with the submission).
-- **Live app:** `<demo-app-url>` (or run it locally with the quickstart below).
+- **Demo video:** `<demo-video-url>` (final cut ready locally; publish before the deadline).
+- **Live app:** https://sonata-phi-green.vercel.app
 
 The demo is a hybrid, and the documentation says so:
 

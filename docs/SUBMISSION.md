@@ -43,26 +43,28 @@ The lead owns the merge, the visibility change, and the final form.
 
 ## Hosted demo
 
-A Vercel-hosted demo is prepared but **not live yet**. The deployment URL will be
-recorded here and in the README after the first successful deployment and smoke test;
-until then, treat any URL as unverified. The exact project settings, environment
-names, database migration/seed steps and smoke commands are in
-[`ops/vercel.md`](../ops/vercel.md).
+**Live:** https://sonata-phi-green.vercel.app
 
-What judges should try once the link exists:
+- Vercel project: `divc13s-projects/sonata`
+- Root Directory: `apps/web`
+- Production alias: `sonata-phi-green.vercel.app`
+- Database: Neon free plan, connected through the Vercel Marketplace
+- Smoke tested: all Sonata routes `200`, tRPC reports `12` masters and `5` active
+  listings, and password login works.
 
-1. Open `/` and play **Midnight Drive**. The player should show the song earning
-   `$0.03/hr` for `@nadia`; audio and covers are served from the deployment.
-2. Open `/pass` and read the `$5 / 30 days` receipt (or buy it if the demo listener
-   has no active pass).
+What judges should try:
+
+1. Open `/` and play **Midnight Drive**. The player shows the song earning
+   `$0.03/hr`; audio and covers are served from the deployment.
+2. Open `/pass` and read the `$5 / 30 days` receipt (the pass is active).
 3. Open `/market`, then `/master/midnight-drive` and its **Chain** tab: the master is
    a 1-of-1 NFT whose keyless song account holds the balance and received the payout.
-4. Open `/audit` to see the seeded demo epochs, the reserve bar and the next real
+4. Open `/audit` to see the historical epochs, the reserve context and the next real
    epoch id.
 5. Sign in with the demo account to see `/library` and `/artist/dashboard`:
    `local@example.test` / `LocalDev123!`. This account is intentionally public and
    exists only in the demo database.
-6. Try `/search?q=midnight` for the non-Sonata catalog search.
+6. Try `/search?q=midnight` for the Sonata master search.
 
 Notes for judges:
 
