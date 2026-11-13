@@ -24,6 +24,7 @@
     "@infinitunes/types": "workspace:*",
     "@infinitunes/ui": "workspace:*",
     "@near-wallet-selector/core": "^10.1.4",
+    "@near-wallet-selector/meteor-wallet": "^10.1.4",
     "@near-wallet-selector/modal-ui": "^10.1.4",
     "@near-wallet-selector/my-near-wallet": "^10.1.4",
     "@t3-oss/env-nextjs": "^0.13.11",

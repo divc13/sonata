@@ -5,9 +5,10 @@
  * a dynamic `import()` from a click or a signing action, so the wallet selector
  * (and its CSS) stay out of first-load JS.
  *
- * The selector signs on NEAR testnet with My NEAR Wallet. Transactions are
- * built as plain `FunctionCall` actions (`lib/sonata/wallet.ts`) and converted
- * to the near-api-js action classes the selector expects right here.
+ * The selector signs on NEAR testnet with Meteor Wallet (the modal also lists
+ * MyNearWallet as a legacy fallback; it is deprecated upstream). Transactions
+ * are built as plain `FunctionCall` actions (`lib/sonata/wallet.ts`) and
+ * converted to the near-api-js action classes the selector expects right here.
  */
 import {
   internalActionToNaj,
@@ -18,13 +19,17 @@ import {
   setupModal,
   type WalletSelectorModal,
 } from "@near-wallet-selector/modal-ui";
-import { setupMyNearWallet } from "@near-wallet-selector/my-near-wallet";
 
 import {
   WALLET_CONTRACTS,
   WALLET_CONNECT_CANCELLED,
   type WalletTransaction,
 } from "./wallet";
+import {
+  SONATA_WALLET_MODAL_DESCRIPTION,
+  SONATA_WALLET_NETWORK,
+  setupSonataWalletModules,
+} from "./wallet-modules";
 
 // oxlint-disable-next-line import/no-unassigned-import -- the modal styles load with the selector chunk
 import "@near-wallet-selector/modal-ui/styles.css";
@@ -38,8 +43,9 @@ let bundle: Promise<SelectorBundle> | undefined;
 
 async function createBundle(): Promise<SelectorBundle> {
   const selector = await setupWalletSelector({
-    network: "testnet",
-    modules: [setupMyNearWallet()],
+    network: SONATA_WALLET_NETWORK,
+    // Meteor Wallet first; MyNearWallet stays only as the legacy fallback.
+    modules: setupSonataWalletModules(),
     allowMultipleSelectors: false,
     optimizeWalletOrder: false,
   });
@@ -47,8 +53,7 @@ async function createBundle(): Promise<SelectorBundle> {
   const modal = setupModal(selector, {
     contractId: WALLET_CONTRACTS.market,
     theme: "auto",
-    description:
-      "Connect a NEAR testnet wallet to buy the pass, buy masters and manage what you own.",
+    description: SONATA_WALLET_MODAL_DESCRIPTION,
   });
 
   return { selector, modal };
