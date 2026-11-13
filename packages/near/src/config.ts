@@ -71,6 +71,20 @@ export const DEMO_ACCOUNT_IDS = {
   nadia: "nadia-sonata.testnet",
 } as const;
 
+/**
+ * The testnet faucet that funds newly connected wallets. Its key is
+ * server-only (`SONATA_FAUCET_SECRET_KEY`, falling back to the collector demo
+ * key for local testnet work) and never reaches the browser. The account is
+ * configurable because the demo collector may be rotated.
+ */
+export const FAUCET_ACCOUNT_ID = withDefault(
+  process.env.SONATA_FAUCET_ACCOUNT_ID,
+  DEMO_ACCOUNT_IDS.collector,
+);
+
+/** One-time grant from the faucet: 25 USDC as a micro-USDC integer string. */
+export const FAUCET_GRANT_USDC_MICRO = "25000000";
+
 /** YoctoNEAR attached to NEP-141 `ft_transfer_call` (receiver-attached calls). */
 export const ONE_YOCTO = 1n;
 
@@ -82,6 +96,13 @@ export const ONE_YOCTO = 1n;
  * A plain `ft_transfer` only needs the 25 Tgas the wallet attaches itself.
  */
 export const FT_TRANSFER_CALL_GAS = 200_000_000_000_000n;
+
+/**
+ * A plain NEP-141 `ft_transfer` (faucet grant) only executes the token
+ * contract's own logic, so 30 TGas is well above the requirement while
+ * staying under the 300 TGas transaction ceiling.
+ */
+export const FT_TRANSFER_GAS = 30_000_000_000_000n;
 
 /** 100 TGas covers the cross-contract pass, sale and withdrawal callbacks. */
 export const DEFAULT_FUNCTION_CALL_GAS = 100_000_000_000_000n;

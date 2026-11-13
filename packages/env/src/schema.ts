@@ -44,6 +44,20 @@ export const serverSchema = {
     .min(1)
     .optional()
     .describe("Server-only ed25519 key for nadia-sonata.testnet."),
+  SONATA_FAUCET_SECRET_KEY: z
+    .string()
+    .min(1)
+    .optional()
+    .describe(
+      "Server-only ed25519 key for the testnet USDC faucet (falls back to SONATA_DEMO_COLLECTOR_SECRET_KEY locally).",
+    ),
+  SONATA_FAUCET_ACCOUNT_ID: z
+    .string()
+    .min(1)
+    .optional()
+    .describe(
+      "Faucet NEAR account id (default collector.sonata.testnet); testnet only.",
+    ),
 } as const;
 
 export type ServerSchema = typeof serverSchema;

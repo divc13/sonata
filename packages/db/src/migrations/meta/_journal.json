@@ -78,6 +78,13 @@
       "when": 1794060577125,
       "tag": "0010_nebulous_yellow_claw",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794574100396,
+      "tag": "0011_wallet_faucet_grant",
+      "breakpoints": true
     }
   ]
 }

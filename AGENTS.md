@@ -404,6 +404,26 @@ for static files here.
   ids come from `SONATA_*` env with testnet defaults
   (`masters/platform/market/usdc-sonata.testnet`).
 
+## Public wallet path (`sonata.wallet`)
+
+- `packages/trpc/src/router/sonata/wallet.ts` is the non-demo path for a
+  connected account: `balance`, one-time `faucet`, and chain-verified
+  `syncPass`/`syncPurchase`/`syncListing`. Inputs take only `accountId` (+
+  token/price); a demo `role` is never read and `nft_token` ownership is
+  checked before Postgres is touched.
+- `packages/near/src/wallet.ts` (`createSonataWallet`, injectable like
+  `createSonataChain`) owns the view reads and `transferUsdc`
+  (`usdc.ft_transfer`, 1 yocto, `FT_TRANSFER_GAS`). Faucet key:
+  `SONATA_FAUCET_SECRET_KEY`, falling back to
+  `SONATA_DEMO_COLLECTOR_SECRET_KEY` locally; account
+  `SONATA_FAUCET_ACCOUNT_ID` (default `collector.sonata.testnet`). One grant is
+  25 USDC (`FAUCET_GRANT_USDC_MICRO`).
+- `sonata_faucet_grant.account_id` is unique and is the rate limit: the row is
+  reserved before the transfer and deleted if the transfer fails, so retries
+  work but a second grant is impossible. Migration
+  `0011_wallet_faucet_grant`; regenerate with `bun run db:generate`.
+- Demo mutations stay for local/video; Vercel sets `SONATA_DEMO_MODE=false`.
+
 ## Maintaining this file
 
 Keep this file for knowledge useful to almost every future agent session in this project.

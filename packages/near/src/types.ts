@@ -13,13 +13,17 @@ export type {
   SonataArtist,
   SonataEpochDetail,
   SonataEpochSummary,
+  SonataListingRow,
   SonataListingWithSong,
   SonataMasterDetail,
   SonataOverview,
+  SonataOwnershipRow,
   SonataPassCache,
   SonataPayoutRow,
+  SonataPurchaseSync,
   SonataSong,
   SonataSongWithEarnings,
+  SonataWalletGrant,
 } from "@infinitunes/types";
 
 /** `master-nft.nft_token` JSON view for one minted master. */

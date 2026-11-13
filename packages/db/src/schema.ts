@@ -271,6 +271,26 @@ export const sonataPass = pgTable(
   (table) => [index("sonata_pass_account_idx").on(table.accountId)],
 );
 
+/**
+ * One-time testnet faucet grant. The unique `account_id` is the rate limit and
+ * the idempotency key: a row is reserved before the transfer lands and its
+ * `tx_hash` is filled once it does, so a failed transfer can release the
+ * reservation without ever allowing a second grant.
+ */
+export const sonataFaucetGrant = pgTable(
+  "sonata_faucet_grant",
+  {
+    id: serial("id").primaryKey(),
+    accountId: text("account_id").notNull(),
+    amountUsdc: text("amount_usdc").notNull(),
+    txHash: text("tx_hash"),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("sonata_faucet_grant_account_unique").on(table.accountId),
+  ],
+);
+
 /** A fixed-price resale listing. Mirrors `market.Listing` while active. */
 export const sonataListing = pgTable(
   "sonata_listing",
@@ -425,6 +445,8 @@ export type SonataPayout = typeof sonataPayout.$inferSelect;
 export type NewSonataPayout = typeof sonataPayout.$inferInsert;
 export type SonataPass = typeof sonataPass.$inferSelect;
 export type NewSonataPass = typeof sonataPass.$inferInsert;
+export type SonataFaucetGrant = typeof sonataFaucetGrant.$inferSelect;
+export type NewSonataFaucetGrant = typeof sonataFaucetGrant.$inferInsert;
 export type SonataListing = typeof sonataListing.$inferSelect;
 export type NewSonataListing = typeof sonataListing.$inferInsert;
 export type SonataSale = typeof sonataSale.$inferSelect;
