@@ -20,6 +20,9 @@ export const SONATA_WALLET_COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
 /** Shown beside the wallet so nobody mistakes this for mainnet. */
 export const SONATA_WALLET_NETWORK_LABEL = "Testnet wallet";
 
+/** `connectWallet` rejects with this when the visitor closes the modal. */
+export const WALLET_CONNECT_CANCELLED = "Wallet connection cancelled.";
+
 /** Mirror of `CONTRACT_IDS` (packages/near/src/config.ts). */
 export const WALLET_CONTRACTS = {
   masters: "masters-sonata.testnet",

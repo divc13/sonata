@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import {
   formatUsdcMicro,
   truncateAccountId,
+  WALLET_CONNECT_CANCELLED,
   type WalletTransaction,
 } from "~/lib/sonata/wallet";
 import {
@@ -106,6 +107,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       writeWalletAccount(connected);
       router.refresh();
     } catch (error) {
+      /* Closing the modal is not a failure worth a toast. */
+      if (
+        error instanceof Error &&
+        error.message === WALLET_CONNECT_CANCELLED
+      ) {
+        return;
+      }
       toast.error("Could not connect a wallet", {
         description: userMessage(
           error,

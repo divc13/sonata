@@ -20,7 +20,11 @@ import {
 } from "@near-wallet-selector/modal-ui";
 import { setupMyNearWallet } from "@near-wallet-selector/my-near-wallet";
 
-import { WALLET_CONTRACTS, type WalletTransaction } from "./wallet";
+import {
+  WALLET_CONTRACTS,
+  WALLET_CONNECT_CANCELLED,
+  type WalletTransaction,
+} from "./wallet";
 
 // oxlint-disable-next-line import/no-unassigned-import -- the modal styles load with the selector chunk
 import "@near-wallet-selector/modal-ui/styles.css";
@@ -72,17 +76,25 @@ export async function connectWallet(): Promise<string> {
 
   return new Promise<string>((resolve, reject) => {
     let settled = false;
-    const finish = (accountId: string | null) => {
+    const finish = (accountId: string | null, reason?: string) => {
       if (settled) return;
       settled = true;
       subscription.remove();
+      hideSubscription.remove();
       modal.hide();
       if (accountId) resolve(accountId);
-      else reject(new Error("The wallet did not return an account."));
+      else reject(new Error(reason ?? "The wallet did not return an account."));
     };
 
     const subscription = selector.on("signedIn", ({ accounts }) => {
       finish(accounts[0]?.accountId ?? null);
+    });
+
+    /* Closing the modal must not leave the connect button pending forever. */
+    const hideSubscription = modal.on("onHide", ({ hideReason }) => {
+      if (hideReason === "user-triggered") {
+        finish(null, WALLET_CONNECT_CANCELLED);
+      }
     });
 
     modal.show();
