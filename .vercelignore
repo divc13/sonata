@@ -1,0 +1,16 @@
+# Keep deploy uploads small and prevent secrets/artifacts from leaving the machine.
+.env
+.env.*
+!.env.example
+.git
+.vercel
+node_modules
+**/node_modules
+.next
+**/.next
+.turbo
+**/.turbo
+artifacts
+contracts/target
+**/target
+apps/web/public/demo/*.zip
